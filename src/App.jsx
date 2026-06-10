@@ -546,7 +546,7 @@ export default function App() {
                                 <span>NIM: {m.nim}</span>
                                 <span className="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded text-[10px] font-semibold border border-indigo-900/40">
                                   {m.role}
-                                tap</span>
+                                </span>
                               </div>
                             </div>
                           ))
