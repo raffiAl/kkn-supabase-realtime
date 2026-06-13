@@ -309,7 +309,7 @@ export default function App() {
     }
 
     const memberData = {
-      id: Date.now().toString(),
+      id: Date.now(), // Menggunakan angka murni agar cocok dengan tipe int8 Supabase
       name: newMember.name,
       nim: newMember.nim,
       division: newMember.division,
@@ -355,8 +355,9 @@ export default function App() {
       return;
     }
 
+    //  KODE BARU (BENAR):
     const problemData = {
-      id: Date.now().toString(),
+      id: Date.now(), // Menggunakan angka murni
       title: newProblem.title,
       category: newProblem.category,
       description: newProblem.description,
@@ -432,8 +433,9 @@ export default function App() {
       return;
     }
 
+    //  KODE BARU (BENAR):
     const taskData = {
-      id: Date.now().toString(),
+      id: Date.now(), // Menggunakan angka murni
       title: newTask.title,
       assignee: newTask.assignee,
       deadline: newTask.deadline || "-",
