@@ -1,837 +1,1336 @@
-import { useState, useEffect } from 'react';
-// Menggunakan ESM CDN agar kompatibel dengan lingkungan sandbox preview tanpa install npm manual
+import React, { useState, useEffect } from 'react';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { 
+  Users, 
+  BookOpen, 
+  CheckSquare, 
+  Settings, 
+  Plus, 
+  Trash2, 
+  AlertTriangle, 
+  CheckCircle, 
+  Clock, 
+  FolderPlus, 
+  ChevronRight, 
+  Layers, 
+  FileText,
+  UserCheck,
+  TrendingUp,
+  MapPin,
+  ExternalLink,
+  Lock,
+  Unlock
+} from 'lucide-react';
 
-// TODO: GANTI KEDUA NILAI INI DENGAN DATA DARI SETTINGS -> API DI DASHBOARD SUPABASE KAMU
-const SUPABASE_URL = "https://vbziomrdbsmsnqegkqwq.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_gaDYw_p-U56_ejevdObJvw_74n6scNF";
-
-// Proteksi agar aplikasi tidak crash di pratinjau jika kunci Supabase belum diganti
-const isPlaceholder = SUPABASE_URL.includes("GANTI_DENGAN_") || SUPABASE_ANON_KEY.includes("GANTI_DENGAN_");
-
-// Inisialisasi Klien Supabase (jika kredensial valid)
-let supabase = null;
-if (!isPlaceholder) {
-  try {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } catch (initError) {
-    console.error("Gagal menginisialisasi Supabase:", initError);
+// --- INISIALISASI SUPABASE DENGAN METODE ESM ---
+const getSupabaseClient = () => {
+  const url = localStorage.getItem('SUPABASE_URL') || '';
+  const key = localStorage.getItem('SUPABASE_ANON_KEY') || '';
+  if (url && key) {
+    try {
+      // Menggunakan fungsi createClient hasil import ESM di atas
+      return createClient(url, key);
+    } catch (e) {
+      console.error("Gagal menginisialisasi Supabase:", e);
+    }
   }
-}
-
-// Koleksi Icon SVG Kustom (Ringan & Kompatibel)
-const Icons = {
-  Users: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-  ),
-  User: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  ),
-  Database: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-    </svg>
-  ),
-  Volume: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-    </svg>
-  ),
-  Camera: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  ),
-  Trash: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
-  ),
-  ArrowRight: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-    </svg>
-  ),
-  Info: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  Lock: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
-  ),
-  Logout: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg>
-  )
+  return null;
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('structure'); // Navigasi Tab Utama
-  const [selectedDiv, setSelectedDiv] = useState('all'); // Filter Divisi Terpilih
-  const [alertMsg, setAlertMsg] = useState({ type: '', text: '' }); // Pesan Notifikasi
+  // --- STATE SYSTEM ---
+  const [currentTab, setCurrentTab] = useState('dashboard');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [dbStatus, setDbStatus] = useState('Menginisialisasi...');
 
-  // State Keamanan (Auth)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [authError, setAuthError] = useState('');
-  const ADMIN_PASSWORD = "kkn10hebat"; // Password default akses admin
+  // Supabase Configuration States
+  const [supabaseUrl, setSupabaseUrl] = useState(localStorage.getItem('SUPABASE_URL') || '');
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(localStorage.getItem('SUPABASE_ANON_KEY') || '');
 
-  // State Form Input Admin
-  const [inputNama, setInputNama] = useState('');
-  const [inputNim, setInputNim] = useState('');
-  const [inputDivisi, setInputDivisi] = useState('pimpinan');
-  const [inputPeran, setInputPeran] = useState('');
+  // --- STATE DATA ---
+  const [members, setMembers] = useState([
+    { id: '1', name: 'Raffi', nim: '20240100101', division: 'bph', role: 'Ketua Kelompok & System Architect' },
+    { id: '2', name: 'Siti Rahma', nim: '20240100102', division: 'bph', role: 'Sekretaris Kelompok & Admin Dokumen' },
+    { id: '3', name: 'Fajar Nugraha', nim: '20240100103', division: 'bph', role: 'Bendahara Kelompok & Manajer Keuangan' }
+  ]);
 
-  // Database Anggota (Dinamis terhubung ke Supabase Cloud / Fallback Lokal)
-  const [members, setMembers] = useState([]);
-  // Best practice: Mulai state loading dengan nilai `true` untuk menghindari render berulang (cascading renders)
-  const [isLoading, setIsLoading] = useState(true);
+  const [problems, setProblems] = useState([
+    { id: '1', title: 'Minimnya Peta Digital Potensi Desa', category: 'Litbang & Data', description: 'Belum adanya peta interaktif yang menunjukkan lokasi UMKM unggulan desa untuk menarik investor luar.', severity: 'Tinggi', status: 'Pending', reporter: 'Divisi Litbang' },
+    { id: '2', title: 'Saluran Irigasi Tersumbat Sampah Plastik', category: 'Lingkungan', description: 'Irigasi persawahan di RT 03 tersumbat tumpukan sampah domestik, berisiko banjir saat musim hujan.', severity: 'Tinggi', status: 'Pending', reporter: 'Luki (Humas)' }
+  ]);
 
-  // Master Data Konfigurasi Visual, Kuota, Tupoksi, dan Deliverables tiap Divisi
-  const divMeta = {
-    pimpinan: {
-      title: "Pimpinan Inti (BPH)",
-      max: 2,
-      bg: "bg-indigo-950/40 border-indigo-900/60 text-indigo-300",
-      icon: <Icons.User />,
-      roles: [
-        { name: "Ketua (1 Orang)", desc: "Penanggung jawab arah pergerakan tim, penentu kebijakan, & komunikator utama eksternal (Kades, DPL)." },
-        { name: "Sekretaris-Bendahara (1 Orang)", desc: "Administrasi kelompok (proposal, surat izin) & pengatur anggaran biaya pra-KKN s/d pasca-KKN." }
-      ],
-      tupoksi: [
-        "Mengoordinasi 3 divisi taktis agar berjalan sesuai rencana (timeline).",
-        "Menjaga kesolidan internal tim dan menengahi jika ada konflik.",
-        "Menyusun rincian anggaran biaya (RAB) KKN secara transparan serta laporan administratif kampus."
-      ],
-      deliverables: ["Surat Izin Survei Resmi", "Rencana Anggaran Biaya (RAB) KKN", "Draf Proposal Kegiatan"]
-    },
-    litbang: {
-      title: "Divisi Litbang & Data",
-      max: 3,
-      bg: "bg-emerald-950/40 border-emerald-900/60 text-emerald-300",
-      icon: <Icons.Database />,
-      roles: [
-        { name: "Peneliti Lapangan (3 Orang)", desc: "Penyusun metode pencarian data lapangan, perancang lembar wawancara, dan pengolah data identifikasi masalah." }
-      ],
-      tupoksi: [
-        "Melakukan studi literatur/desk-research tentang profil desa sebelum terjun ke lokasi.",
-        "Menyusun kuesioner & pedoman wawancara terfokus untuk warga desa setempat.",
-        "Mengolah, mengelompokkan, dan merumuskan hasil temuan survei menjadi data masalah prioritas desa."
-      ],
-      deliverables: ["Instrumen/Panduan Wawancara", "Monografi Data Profil Desa", "Peta Analisis Masalah Warga"]
-    },
-    humas: {
-      title: "Divisi Humas & Hubungan Lembaga",
-      max: 3,
-      bg: "bg-amber-950/40 border-amber-900/60 text-amber-300",
-      icon: <Icons.Volume />,
-      roles: [
-        { name: "Liaison Officer (3 Orang)", desc: "Penghubung komunikasi kelompok dengan perangkat desa dan instansi lokal, serta penjaga etika relasi warga." }
-      ],
-      tupoksi: [
-        "Membangun komunikasi dan meminta izin survei ke Kepala Desa, RT/RW, PKK, & Karang Taruna.",
-        "Mengatur jadwal audiensi formal kelompok dan memetakan plot lokasi survei anggota.",
-        "Mengingatkan seluruh anggota tim terkait norma kesopanan dan budaya lokal desa setempat."
-      ],
-      deliverables: ["Daftar Kontak Kunci (Stakeholder) Desa", "Izin Akses Lokasi Wawancara", "Jadwal Logistik Pertemuan"]
-    },
-    medok: {
-      title: "Divisi Media & Dokumentasi",
-      max: 2,
-      bg: "bg-rose-950/40 border-rose-900/60 text-rose-300",
-      icon: <Icons.Camera />,
-      roles: [
-        { name: "Content Specialist (2 Orang)", desc: "Kreator konten digital kelompok, fotografer lapangan, serta penanggung jawab penuh Instagram resmi." }
-      ],
-      tupoksi: [
-        "Membuat, mendesain tampilan, dan mengaktifkan akun Instagram resmi kelompok sejak pra-KKN.",
-        "Mengambil foto/video dokumentasi bernilai estetis tinggi selama survei dan masa KKN.",
-        "Mendesain infografis peta masalah atau poster edukatif kelompok untuk keperluan pelaporan."
-      ],
-      deliverables: ["Feed & Reels Instagram Aktif", "Penyimpanan (Drive) Dokumentasi KKN", "Aset Desain Laporan Akhir"]
-    }
+  const [tasks, setTasks] = useState([
+    { id: '1', title: 'Menyusun Surat Izin Survei Desa', assignee: 'Siti Rahma', deadline: '2026-06-15', status: 'Selesai' },
+    { id: '2', title: 'Menyusun 15 Draf Pertanyaan Wawancara', assignee: 'Divisi Litbang', deadline: '2026-06-16', status: 'Sedang Berjalan' },
+    { id: '3', title: 'Koordinasi Jadwal dengan Kepala Desa', assignee: 'Divisi Humas', deadline: '2026-06-16', status: 'Belum Mulai' },
+    { id: '4', title: 'Membuat Brand Guidelines Akun IG Bersama', assignee: 'Divisi Medok', deadline: '2026-06-18', status: 'Belum Mulai' }
+  ]);
+
+  // --- FORMS STATES ---
+  const [newMember, setNewMember] = useState({ name: '', nim: '', division: 'bph', role: '' });
+  const [newProblem, setNewProblem] = useState({ title: '', category: 'Ekonomi/UMKM', description: '', severity: 'Sedang', reporter: '' });
+  const [newTask, setNewTask] = useState({ title: '', assignee: '', deadline: '', status: 'Belum Mulai' });
+
+  // --- ALOKASI & STRUKTUR KUOTA ---
+  const divisions = {
+    bph: { name: 'Pimpinan Inti (BPH)', max: 3, description: 'Ketua, Sekretaris, dan Bendahara. Bertanggung jawab atas administrasi, manajemen uang, dan arah kebijakan kelompok.' },
+    litbang: { name: 'Divisi Litbang & Data', max: 3, description: 'Fokus pada riset masalah desa, menyusun kuesioner wawancara, serta mengolah data monografi.' },
+    humas: { name: 'Divisi Humas & Hubungan Lembaga', max: 2, description: 'Ujung tombak komunikasi, perizinan instansi, serta pengatur jadwal pertemuan tim di lapangan.' },
+    medok: { name: 'Divisi Media & Dokumentasi (Medok)', max: 2, description: 'Mengelola Instagram kolaborasi bersama 5 kelompok, mengambil foto/video investigatif, dan menyusun infografis.' }
   };
 
-  // Matriks Relasi Kerja Sama Antar-Divisi
-  const relationshipMatrix = [
-    {
-      from: "Pimpinan Inti (BPH)",
-      color: "border-l-indigo-500",
-      relations: [
-        { to: "Litbang", desc: "Menerima hasil analisis masalah desa untuk diputuskan program kerja yang paling cocok." },
-        { to: "Humas", desc: "Memberi instruksi lobi eksternal dan menerima laporan hasil perizinan dari aparat desa." },
-        { to: "Medok", desc: "Memberikan rilis informasi resmi kelompok dan mengontrol konsistensi publikasi Instagram." }
-      ]
-    },
-    {
-      from: "Litbang & Data",
-      color: "border-l-emerald-500",
-      relations: [
-        { to: "Pimpinan Inti (BPH)", desc: "Melaporkan peta masalah terverifikasi sebagai bahan pertimbangan rapat penentuan program." },
-        { to: "Humas", desc: "Berkoordinasi untuk menentukan siapa tokoh desa yang paling relevan diwawancarai sesuai kebutuhan data." },
-        { to: "Medok", desc: "Menyalurkan data statistik/fakta desa untuk diolah menjadi desain infografis edukasi di Instagram." }
-      ]
-    },
-    {
-      from: "Humas & Lembaga",
-      color: "border-l-amber-500",
-      relations: [
-        { to: "Pimpinan Inti (BPH)", desc: "Melaporkan progres perizinan desa dan mendampingi pimpinan saat audiensi formal." },
-        { to: "Litbang", desc: "Membuka akses ke tokoh kunci (Kades, PKK, Pemuda) agar proses pengambilan data wawancara berjalan lancar." },
-        { to: "Medok", desc: "Mengoordinasikan etika dokumentasi lapangan (meminta izin warga sebelum diambil gambarnya oleh Medok)." }
-      ]
-    },
-    {
-      from: "Media & Dokumentasi (Medok)",
-      color: "border-l-rose-500",
-      relations: [
-        { to: "Pimpinan Inti (BPH)", desc: "Mendapatkan persetujuan (approval) konten publikasi sebelum diunggah di Instagram resmi." },
-        { to: "Litbang", desc: "Mendapatkan narasi, rincian data masalah, dan statistik desa untuk diolah menjadi postingan visual bermanfaat." },
-        { to: "Humas", desc: "Berkoordinasi saat mengambil dokumentasi warga agar tetap menjaga privasi warga lokal." }
-      ]
-    }
-  ];
-
-  // Simulasi Alur Pergerakan Tim Saat Survei
-  const timelineSteps = [
-    {
-      stage: "Tahap 1: Persiapan Internal (Pra-Survei)",
-      desc: "Sebelum menginjakkan kaki di desa, tim mempersiapkan landasan teoritis & administratif.",
-      acts: [
-        { div: "Pimpinan", act: "Menyusun draf surat perizinan kampus dan menghitung dana operasional bensin & konsumsi survei." },
-        { div: "Litbang", act: "Mencari profil desa di internet (desk research) dan menyusun 15 daftar pertanyaan inti masalah." },
-        { div: "Humas", act: "Melakukan kontak awal via telepon dengan pihak kecamatan/desa untuk membuat janji temu perdana." },
-        { div: "Medok", act: "Membuat akun IG, mendesain logo kelompok, dan mengunggah poster 'Coming Soon / Perkenalan Tim'." }
-      ]
-    },
-    {
-      stage: "Tahap 2: Eksekusi Lapangan (Hari-H Survei)",
-      desc: "Semua 10 anggota bergerak ke desa dengan tugas lapangan yang sangat terarah.",
-      acts: [
-        { div: "Pimpinan & Humas", act: "Masuk ke kantor balai desa untuk sowan resmi, menyerahkan surat izin, dan audiensi dengan Pak Kades." },
-        { div: "Litbang & Anggota", act: "Menyebar berpasangan (misal 5 tim @2 orang) untuk mewawancarai sasaran berbeda: Ketua RT, Karang Taruna, Ibu PKK, Warung Warga." },
-        { div: "Medok", act: "Mengambil footage estetik, mendokumentasikan kegiatan wawancara, dan membuat story update 'Real-time Kegiatan KKN'." }
-      ]
-    },
-    {
-      stage: "Tahap 3: Pasca-Survei (Evaluasi & Perumusan)",
-      desc: "Mengolah temuan di lapangan menjadi rencana aksi nyata.",
-      acts: [
-        { div: "Litbang", act: "Memimpin rapat internal untuk memaparkan seluruh rekaman wawancara dan menyortir masalah prioritas desa." },
-        { div: "Pimpinan", act: "Menetapkan 1 atau 2 program kerja KKN berdasarkan masalah teratas yang dilaporkan oleh Litbang." },
-        { div: "Medok", act: "Mendesain infografis 'Mengenal Lebih Dekat Desa X' dan merilis ringkasan visual hasil survei ke Instagram." },
-        { div: "Humas", act: "Mengonfirmasi ulang ke pihak desa bahwa kita siap kembali di hari H pengabdian dengan program yang disetujui." }
-      ]
-    }
-  ];
-
-  // Helper: Hitung Jumlah Anggota per Divisi
-  const getCount = (divKey) => members.filter(m => m.division === divKey).length;
-
-  // 1. Ambil Data Awal dari Supabase (atau fallback ke memori jika kunci masih placeholder)
-  const fetchMembers = async () => {
-    if (isPlaceholder || !supabase) {
-      // Fallback data lokal agar pratinjau tetap fungsional & interaktif
-      setTimeout(() => {
-        const localData = JSON.parse(localStorage.getItem('kkn_members_fallback')) || [
-          { id: 1, name: "Moh. Raffi Alfatih", nim: "20240040066", division: "pimpinan", role: "Ketua Kelompok" }
-        ];
-        setMembers(localData);
-        setIsLoading(false);
-      }, 500);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .order('id', { ascending: true });
-
-      if (error) {
-        setAlertMsg({ type: 'error', text: 'Gagal memuat data dari Supabase: ' + error.message });
-      } else {
-        setMembers(data || []);
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan koneksi ke Supabase.';
-      setAlertMsg({ type: 'error', text: errorMessage });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // --- SUPABASE ENGINE & REAL-TIME SYNC ---
   useEffect(() => {
-    fetchMembers();
+    const client = getSupabaseClient();
+    if (client) {
+      setDbStatus('Koneksi Supabase Cloud Aktif (ESM) 🟢');
+      
+      // 1. Fetch Awal Data
+      const loadData = async () => {
+        const { data: dbMembers } = await client.from('members').select('*');
+        if (dbMembers && dbMembers.length > 0) setMembers(dbMembers);
 
-    if (isPlaceholder || !supabase) return;
+        const { data: dbProblems } = await client.from('village_problems').select('*');
+        if (dbProblems && dbProblems.length > 0) setProblems(dbProblems);
 
-    // 2. AKTIFKAN FITUR REAL-TIME (LISTEN) JIKA KUNCI SUDAH TERPASANG
-    const channel = supabase
-      .channel('realtime_members_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', scheme: 'public', table: 'members' },
-        () => {
-          fetchMembers();
-        }
-      )
-      .subscribe();
+        const { data: dbTasks } = await client.from('tasks').select('*');
+        if (dbTasks && dbTasks.length > 0) setTasks(dbTasks);
+      };
+      loadData();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+      // 2. Real-time Subscription (Broadcast)
+      const membersChan = client.channel('members_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, () => {
+          loadData();
+        }).subscribe();
 
-  // Handler: Proses Login Admin
+      const problemsChan = client.channel('problems_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'village_problems' }, () => {
+          loadData();
+        }).subscribe();
+
+      const tasksChan = client.channel('tasks_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+          loadData();
+        }).subscribe();
+
+      return () => {
+        client.removeChannel(membersChan);
+        client.removeChannel(problemsChan);
+        client.removeChannel(tasksChan);
+      };
+    } else {
+      setDbStatus('Local Mode (Simulasi Memori) 🟡');
+    }
+  }, [supabaseUrl, supabaseAnonKey]);
+
+  // --- CONTROLLERS ---
+
+  // Konfigurasi Database Supabase
+  const handleSaveConfig = (e) => {
+    e.preventDefault();
+    localStorage.setItem('SUPABASE_URL', supabaseUrl);
+    localStorage.setItem('SUPABASE_ANON_KEY', supabaseAnonKey);
+    window.location.reload();
+  };
+
+  const handleClearConfig = () => {
+    localStorage.removeItem('SUPABASE_URL');
+    localStorage.removeItem('SUPABASE_ANON_KEY');
+    setSupabaseUrl('');
+    setSupabaseAnonKey('');
+    window.location.reload();
+  };
+
+  // Autentikasi Admin Panel
   const handleLogin = (e) => {
     e.preventDefault();
-    if (passwordInput === ADMIN_PASSWORD) {
-      setIsLoggedIn(true);
-      setAuthError('');
-      setPasswordInput('');
-      setAlertMsg({ type: 'success', text: 'Login berhasil! Akses Admin Panel dibuka.' });
+    if (passcode === 'kkn10hebat') {
+      setIsAdmin(true);
+      setAdminError('');
     } else {
-      setAuthError('Password salah! Cek kembali password admin kelompok.');
+      setAdminError('Passcode Salah! Coba cek instruksi ketua.');
     }
   };
 
-  // Handler: Proses Logout Admin
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setAlertMsg({ type: 'success', text: 'Sesi admin ditutup. Panel terkunci kembali.' });
+    setIsAdmin(false);
+    setPasscode('');
   };
 
-  // Handler: Menambah Anggota Baru (Insert)
+  // Tambah Anggota (Admin)
   const handleAddMember = async (e) => {
     e.preventDefault();
-    if (!inputNama.trim() || !inputNim.trim() || !inputPeran.trim()) {
-      setAlertMsg({ type: 'error', text: 'Gagal! Semua kolom input wajib diisi secara lengkap.' });
+    const currentCount = members.filter(m => m.division === newMember.division).length;
+    if (currentCount >= divisions[newMember.division].max) {
+      alert(`Kuota ${divisions[newMember.division].name} sudah penuh! (Maksimal ${divisions[newMember.division].max} orang)`);
       return;
     }
 
-    if (getCount(inputDivisi) >= divMeta[inputDivisi].max) {
-      setAlertMsg({
-        type: 'error',
-        text: `Gagal! Kuota maksimal ${divMeta[inputDivisi].title} adalah ${divMeta[inputDivisi].max} orang dan sudah penuh.`
-      });
-      return;
-    }
+    const memberData = {
+      id: Date.now().toString(),
+      name: newMember.name,
+      nim: newMember.nim,
+      division: newMember.division,
+      role: newMember.role || 'Anggota Tim'
+    };
 
-    // Jika masih mode pratinjau/placeholder, gunakan penyimpanan lokal
-    if (isPlaceholder || !supabase) {
-      const newMember = {
-        id: Date.now(),
-        name: inputNama,
-        nim: inputNim,
-        division: inputDivisi,
-        role: inputPeran
-      };
-      const updated = [...members, newMember];
-      setMembers(updated);
-      localStorage.setItem('kkn_members_fallback', JSON.stringify(updated));
-      setInputNama('');
-      setInputNim('');
-      setInputPeran('');
-      setAlertMsg({ type: 'success', text: `Berhasil! ${inputNama} ditambahkan (Mode Demo/Lokal).` });
-      return;
-    }
-
-    // Jika sudah dihubungkan ke Supabase asli
-    const { error } = await supabase
-      .from('members')
-      .insert([
-        { 
-          name: inputNama, 
-          nim: inputNim, 
-          division: inputDivisi, 
-          role: inputPeran 
-        }
-      ]);
-
-    if (error) {
-      setAlertMsg({ type: 'error', text: 'Gagal menyimpan ke database: ' + error.message });
+    const client = getSupabaseClient();
+    if (client) {
+      const { error } = await client.from('members').insert([memberData]);
+      if (error) console.error(error);
     } else {
-      setInputNama('');
-      setInputNim('');
-      setInputPeran('');
-      setAlertMsg({ type: 'success', text: `Berhasil! Data anggota terkirim ke Cloud Database.` });
+      setMembers([...members, memberData]);
+    }
+
+    setNewMember({ name: '', nim: '', division: 'bph', role: '' });
+  };
+
+  // Hapus Anggota (Admin)
+  const handleRemoveMember = async (id) => {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.from('members').delete().eq('id', id);
+    } else {
+      setMembers(members.filter(m => m.id !== id));
     }
   };
 
-  // Handler: Menghapus Anggota (Delete)
-  const handleRemoveMember = async (id) => {
-    if (isPlaceholder || !supabase) {
-      const updated = members.filter(m => m.id !== id);
-      setMembers(updated);
-      localStorage.setItem('kkn_members_fallback', JSON.stringify(updated));
-      setAlertMsg({ type: 'success', text: 'Anggota berhasil dihapus (Mode Demo/Lokal).' });
+  // Tambah Masalah Desa (Publik/Semua Divisi Bisa Input Saat Survei)
+  const handleAddProblem = async (e) => {
+    e.preventDefault();
+    if (!newProblem.title || !newProblem.description) {
+      alert("Harap isi semua kolom judul dan deskripsi masalah!");
       return;
     }
 
-    const { error } = await supabase
-      .from('members')
-      .delete()
-      .eq('id', id);
+    const problemData = {
+      id: Date.now().toString(),
+      title: newProblem.title,
+      category: newProblem.category,
+      description: newProblem.description,
+      severity: newProblem.severity,
+      status: 'Pending',
+      reporter: newProblem.reporter || 'Anonim'
+    };
 
-    if (error) {
-      setAlertMsg({ type: 'error', text: 'Gagal menghapus data di database: ' + error.message });
+    const client = getSupabaseClient();
+    if (client) {
+      const { error } = await client.from('village_problems').insert([problemData]);
+      if (error) console.error(error);
     } else {
-      setAlertMsg({ type: 'success', text: 'Anggota berhasil dihapus dari Cloud Database.' });
+      setProblems([...problems, problemData]);
+    }
+
+    setNewProblem({ title: '', category: 'Ekonomi/UMKM', description: '', severity: 'Sedang', reporter: '' });
+    setCurrentTab('problems');
+  };
+
+  // Update Status Masalah (Admin)
+  const handleUpdateProblemStatus = async (id, newStatus) => {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.from('village_problems').update({ status: newStatus }).eq('id', id);
+    } else {
+      setProblems(problems.map(p => p.id === id ? { ...p, status: newStatus } : p));
+    }
+  };
+
+  // Hapus Masalah (Admin)
+  const handleRemoveProblem = async (id) => {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.from('village_problems').delete().eq('id', id);
+    } else {
+      setProblems(problems.filter(p => p.id !== id));
+    }
+  };
+
+  // Tambah Tugas (Admin)
+  const handleAddTask = async (e) => {
+    e.preventDefault();
+    if (!newTask.title || !newTask.assignee) {
+      alert("Mohon isi judul tugas dan penanggung jawab!");
+      return;
+    }
+
+    const taskData = {
+      id: Date.now().toString(),
+      title: newTask.title,
+      assignee: newTask.assignee,
+      deadline: newTask.deadline || '-',
+      status: 'Belum Mulai'
+    };
+
+    const client = getSupabaseClient();
+    if (client) {
+      const { error } = await client.from('tasks').insert([taskData]);
+      if (error) console.error(error);
+    } else {
+      setTasks([...tasks, taskData]);
+    }
+
+    setNewTask({ title: '', assignee: '', deadline: '', status: 'Belum Mulai' });
+  };
+
+  // Update Status Tugas (Admin/Kanban Drag)
+  const handleUpdateTaskStatus = async (id, newStatus) => {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.from('tasks').update({ status: newStatus }).eq('id', id);
+    } else {
+      setTasks(tasks.map(t => t.id === id ? { ...t, status: newStatus } : t));
+    }
+  };
+
+  // Hapus Tugas (Admin)
+  const handleRemoveTask = async (id) => {
+    const client = getSupabaseClient();
+    if (client) {
+      await client.from('tasks').delete().eq('id', id);
+    } else {
+      setTasks(tasks.filter(t => t.id !== id));
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 md:p-8">
-      {/* Banner Informasi Kunci Supabase */}
-      {isPlaceholder && (
-        <div className="max-w-6xl mx-auto mb-4 p-3 bg-amber-950/30 border border-amber-900/60 rounded-lg text-xs text-amber-300 flex items-center gap-2.5 animate-pulse">
-          <span className="flex-shrink-0 bg-amber-900/50 p-1 rounded"><Icons.Info /></span>
-          <span>
-            <strong>Mode Demo Aktif:</strong> Anda dapat mencoba fitur tambah/hapus anggota di pratinjau ini. Untuk menghubungkannya secara permanen ke tim, masukkan <code>SUPABASE_URL</code> dan <code>SUPABASE_ANON_KEY</code> Anda di baris 5-6 berkas <code>App.jsx</code>.
-          </span>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      
+      {/* HEADER UTAMA */}
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-4 md:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-500/20">
+            <Layers className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              KKN Sinergi-Workspace 
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Gelombang 1</span>
+            </h1>
+            <p className="text-xs text-slate-400">Pusat Database Masalah Desa & Kolaborasi Kerja Tim (ESM Mode)</p>
+          </div>
         </div>
-      )}
 
-      {/* Header Utama */}
-      <div className="max-w-6xl mx-auto mb-8 text-center md:text-left md:flex justify-between items-center border-b border-slate-800 pb-6">
-        <div>
-          <span className="bg-indigo-500/10 text-indigo-400 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
-            Sistem KKN Real-time ({members.length}/10 Anggota)
-          </span>
-          <h1 className="text-3xl font-extrabold text-white mt-2">Misi KKN: Identifikasi Masalah Desa</h1>
-          <p className="text-slate-400 mt-1">Sistem pembagian tugas taktis, hubungan relasi, dan alur pergerakan tim berbasis Supabase</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Database Status Indicator */}
+          <div className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 font-mono text-slate-300">
+            {dbStatus}
+          </div>
+
+          <button 
+            onClick={() => setCurrentTab('admin')} 
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+              isAdmin 
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' 
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+            }`}
+          >
+            {isAdmin ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+            {isAdmin ? 'Admin Mode (Aktif)' : 'Admin Login'}
+          </button>
         </div>
+      </header>
+
+      {/* NAVIGASI BAR */}
+      <nav className="bg-slate-900 border-b border-slate-800 px-4 overflow-x-auto flex gap-1">
+        <button 
+          onClick={() => setCurrentTab('dashboard')}
+          className={`px-4 py-3 text-sm font-semibold transition-all border-b-2 flex items-center gap-2 shrink-0 ${
+            currentTab === 'dashboard' ? 'border-indigo-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <TrendingUp className="h-4 w-4" /> Dashboard
+        </button>
+        <button 
+          onClick={() => setCurrentTab('struktur')}
+          className={`px-4 py-3 text-sm font-semibold transition-all border-b-2 flex items-center gap-2 shrink-0 ${
+            currentTab === 'struktur' ? 'border-indigo-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Users className="h-4 w-4" /> Peta Struktur & Tupoksi
+        </button>
+        <button 
+          onClick={() => setCurrentTab('problems')}
+          className={`px-4 py-3 text-sm font-semibold transition-all border-b-2 flex items-center gap-2 shrink-0 ${
+            currentTab === 'problems' ? 'border-indigo-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <BookOpen className="h-4 w-4" /> Bank Masalah Desa 
+          {problems.length > 0 && (
+            <span className="ml-1 bg-rose-500/20 text-rose-400 px-1.5 py-0.5 text-xs rounded-full border border-rose-500/30">{problems.length}</span>
+          )}
+        </button>
+        <button 
+          onClick={() => setCurrentTab('tasks')}
+          className={`px-4 py-3 text-sm font-semibold transition-all border-b-2 flex items-center gap-2 shrink-0 ${
+            currentTab === 'tasks' ? 'border-indigo-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <CheckSquare className="h-4 w-4" /> Live Progress Tracker
+        </button>
+        <button 
+          onClick={() => setCurrentTab('alur')}
+          className={`px-4 py-3 text-sm font-semibold transition-all border-b-2 flex items-center gap-2 shrink-0 ${
+            currentTab === 'alur' ? 'border-indigo-500 text-white bg-slate-800/50' : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <ChevronRight className="h-4 w-4" /> Alur Kolaborasi Estafet
+        </button>
+      </nav>
+
+      {/* CONTAINER CONTENT */}
+      <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
         
-        {/* Navigasi Tab */}
-        <div className="mt-4 md:mt-0 flex flex-wrap justify-center bg-slate-800 rounded-lg p-1 gap-1 self-center">
-          <button
-            onClick={() => { setActiveTab('structure'); setSelectedDiv('all'); }}
-            className={`px-3.5 py-2 text-xs md:text-sm font-medium rounded-md transition-all ${activeTab === 'structure' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Peta Struktur & Tupoksi
-          </button>
-          <button
-            onClick={() => setActiveTab('matrix')}
-            className={`px-3.5 py-2 text-xs md:text-sm font-medium rounded-md transition-all ${activeTab === 'matrix' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Matriks Kerja Sama
-          </button>
-          <button
-            onClick={() => setActiveTab('timeline')}
-            className={`px-3.5 py-2 text-xs md:text-sm font-medium rounded-md transition-all ${activeTab === 'timeline' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Alur Survei
-          </button>
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`px-3.5 py-2 text-xs md:text-sm font-medium rounded-md transition-all ${activeTab === 'admin' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            ⚙️ Admin Panel {isLoggedIn && '🔓'}
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto">
-        {/* Notifikasi Alert */}
-        {alertMsg.text && (
-          <div className={`mb-6 p-4 rounded-lg text-sm flex justify-between items-center ${alertMsg.type === 'error' ? 'bg-rose-950/50 border border-rose-900 text-rose-300' : 'bg-emerald-950/50 border border-emerald-900 text-emerald-300'}`}>
-            <span>{alertMsg.text}</span>
-            <button onClick={() => setAlertMsg({ type: '', text: '' })} className="font-bold hover:opacity-70 text-lg leading-none">×</button>
-          </div>
-        )}
-
-        {/* LOADING SCREEN JIKA DATA SEDANG DIAMBIL */}
-        {isLoading && (
-          <div className="text-center py-16 animate-pulse">
-            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto animate-spin mb-4"></div>
-            <p className="text-xs text-slate-400">Sinkronisasi data ke Supabase Cloud...</p>
-          </div>
-        )}
-
-        {/* TAB 1: PETA STRUKTUR & DETAIL TUPOKSI */}
-        {!isLoading && activeTab === 'structure' && (
-          <div className="space-y-6">
-            <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 flex items-start gap-3">
-              <div className="text-indigo-400 mt-0.5"><Icons.Info /></div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                <strong>Panduan Pengguna:</strong> Klik salah satu kartu divisi di bawah ini untuk melihat daftar personil aktif secara live, detail <strong>Tupoksi Utama</strong>, serta target <strong>Output Nyata (Deliverables)</strong> di panel detail bagian bawah.
-              </p>
+        {/* ======================================= */}
+        {/* TAB 1: DASHBOARD OVERVIEW               */}
+        {/* ======================================= */}
+        {currentTab === 'dashboard' && (
+          <div className="space-y-8 animate-fadeIn">
+            
+            {/* CARD BANNER INFORMASI */}
+            <div className="bg-gradient-to-r from-indigo-900/40 to-slate-900 border border-indigo-500/20 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-white">Selamat Datang di KKN Sinergi Hub!</h2>
+                <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
+                  Platform ini diarsiteki khusus untuk memudahkan koordinasi 10 anggota tim kelompok kita di lapangan. 
+                  Sebagai kelompok <strong>Gelombang 1</strong>, misi utama kita adalah mengumpulkan data lapangan, memetakan masalah sespesifik mungkin, lalu menyerahkannya ke Kelompok Riset secara terstruktur.
+                </p>
+                <div className="flex gap-4 pt-2">
+                  <div className="text-xs text-indigo-300 flex items-center gap-1.5">
+                    <UserCheck className="h-4 w-4" /> 10 Slot Anggota Terstruktur
+                  </div>
+                  <div className="text-xs text-rose-300 flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4" /> Bank Masalah Terpusat
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                <button 
+                  onClick={() => setCurrentTab('problems')} 
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2 justify-center"
+                >
+                  <Plus className="h-4 w-4" /> Input Temuan Masalah
+                </button>
+                <a 
+                  href="https://instagram.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 justify-center"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> IG Kolaborasi 5 Kelompok
+                </a>
+              </div>
             </div>
 
-            {/* Grid Kartu Divisi */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(divMeta).map(([key, meta]) => {
-                const isSelected = selectedDiv === key || selectedDiv === 'all';
-                const currentCount = getCount(key);
+            {/* BARIS UTAMA WIDGETS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center gap-4">
+                <div className="p-3.5 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-white">{members.length}/10</div>
+                  <div className="text-xs text-slate-400">Kekuatan Tim Terdaftar</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center gap-4">
+                <div className="p-3.5 bg-rose-500/10 text-rose-400 rounded-lg border border-rose-500/20">
+                  <BookOpen className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-white">{problems.length}</div>
+                  <div className="text-xs text-slate-400">Total Masalah Terpetakan</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center gap-4">
+                <div className="p-3.5 bg-amber-500/10 text-amber-400 rounded-lg border border-amber-500/20">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-white">
+                    {tasks.filter(t => t.status === 'Sedang Berjalan').length}
+                  </div>
+                  <div className="text-xs text-slate-400">Tugas Sedang Diproses</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center gap-4">
+                <div className="p-3.5 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20">
+                  <CheckCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-extrabold text-white">
+                    {tasks.filter(t => t.status === 'Selesai').length}
+                  </div>
+                  <div className="text-xs text-slate-400">Tugas Rampung</div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* SEKSI QUICK OVERVIEW MASALAH & TUGAS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Box Masalah Terbaru */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-rose-500" /> Temuan Masalah Terakhir
+                  </h3>
+                  <button onClick={() => setCurrentTab('problems')} className="text-xs text-indigo-400 hover:underline">
+                    Lihat Semua
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {problems.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-6">Belum ada temuan masalah yang dimasukkan.</p>
+                  ) : (
+                    problems.slice(-3).reverse().map((p) => (
+                      <div key={p.id} className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-sm font-semibold text-slate-200 line-clamp-1">{p.title}</h4>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                            p.severity === 'Tinggi' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                            p.severity === 'Sedang' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                            'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                          }`}>
+                            {p.severity}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 line-clamp-2">{p.description}</p>
+                        <div className="text-[10px] text-slate-500 flex justify-between pt-1">
+                          <span>Kategori: {p.category}</span>
+                          <span>Dilaporkan oleh: {p.reporter}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Box Tugas Berjalan */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <CheckSquare className="h-5 w-5 text-amber-500" /> Monitoring Tugas Aktif
+                  </h3>
+                  <button onClick={() => setCurrentTab('tasks')} className="text-xs text-indigo-400 hover:underline">
+                    Buka Papan Kerja
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {tasks.filter(t => t.status !== 'Selesai').length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-6">Semua tugas saat ini sedang bersih/rampung!</p>
+                  ) : (
+                    tasks.filter(t => t.status !== 'Selesai').slice(0, 3).map((t) => (
+                      <div key={t.id} className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-semibold text-slate-200">{t.title}</h4>
+                          <div className="flex gap-3 text-[10px] text-slate-500">
+                            <span>PJ: <strong className="text-slate-300">{t.assignee}</strong></span>
+                            <span>Deadline: {t.deadline}</span>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold shrink-0 border ${
+                          t.status === 'Sedang Berjalan' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'
+                        }`}>
+                          {t.status}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* SEKSI SHORTCUT LINKS / THE HUB */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h3 className="font-bold text-white flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-indigo-400" /> Ekosistem & Tautan Pintar Kelompok
+              </h3>
+              <p className="text-xs text-slate-400">Gak usah nyari-nyari link di pin chat WhatsApp lagi. Semua tersentralisasi di sini:</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl hover:border-slate-700 transition-all space-y-2">
+                  <span className="text-2xl">📂</span>
+                  <h4 className="text-sm font-bold text-slate-200">Google Drive Laporan</h4>
+                  <p className="text-xs text-slate-400">Tempat Sekretaris menaruh draf laporan resmi format <strong>Times New Roman 12pt, Spasi 1.5</strong>.</p>
+                  <a href="#" className="text-xs text-indigo-400 flex items-center gap-1 hover:underline pt-2">Buka Drive <ExternalLink className="h-3 w-3" /></a>
+                </div>
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl hover:border-slate-700 transition-all space-y-2">
+                  <span className="text-2xl">🎨</span>
+                  <h4 className="text-sm font-bold text-slate-200">Canva / Figma Bersama</h4>
+                  <p className="text-xs text-slate-400">Tempat tim Medok kolaborasi menyusun template postingan Instagram ber-palet <strong>Sage Green / Navy</strong>.</p>
+                  <a href="#" className="text-xs text-indigo-400 flex items-center gap-1 hover:underline pt-2">Mulai Desain <ExternalLink className="h-3 w-3" /></a>
+                </div>
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl hover:border-slate-700 transition-all space-y-2">
+                  <span className="text-2xl">📍</span>
+                  <h4 className="text-sm font-bold text-slate-200">Google Maps Desa KKN</h4>
+                  <p className="text-xs text-slate-400">Peta koordinat pusat kantor balai desa agar rute tim Humas dan tim lapangan tidak tersasar.</p>
+                  <a href="#" className="text-xs text-indigo-400 flex items-center gap-1 hover:underline pt-2">Buka Gmaps <ExternalLink className="h-3 w-3" /></a>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ======================================= */}
+        {/* TAB 2: PETA STRUKTUR & TUPOKSI          */}
+        {/* ======================================= */}
+        {currentTab === 'struktur' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="border-b border-slate-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">Peta Struktur & Tupoksi Divisi</h2>
+              <p className="text-sm text-slate-400">Sistem pembagian 10 anggota secara taktis untuk efektivitas kerja tingkat tinggi.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {Object.entries(divisions).map(([key, info]) => {
+                const registered = members.filter(m => m.division === key);
                 return (
-                  <div
-                    key={key}
-                    onClick={() => setSelectedDiv(selectedDiv === key ? 'all' : key)}
-                    className={`cursor-pointer rounded-xl border p-5 transition-all duration-300 transform hover:-translate-y-1 ${meta.bg} ${isSelected ? 'opacity-100 scale-100 ring-2 ring-indigo-500 shadow-lg' : 'opacity-30 scale-95'}`}
-                  >
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="p-2.5 rounded-lg bg-slate-900 text-white">{meta.icon}</div>
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-md ${currentCount === meta.max ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-900'}`}>
-                        {currentCount} / {meta.max} Orang
+                  <div key={key} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-start justify-between border-b border-slate-800 pb-3">
+                      <div>
+                        <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                          {key === 'bph' ? <UserCheck className="h-5 w-5 text-indigo-400" /> : 
+                           key === 'litbang' ? <BookOpen className="h-5 w-5 text-rose-400" /> :
+                           key === 'humas' ? <Users className="h-5 w-5 text-sky-400" /> : 
+                           <Layers className="h-5 w-5 text-amber-400" />}
+                          {info.name}
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-1">{info.description}</p>
+                      </div>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                        registered.length === info.max 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                          : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                      }`}>
+                        {registered.length} / {info.max} Orang
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-2">{meta.title}</h3>
-                    <p className="text-[11px] text-slate-400">Klik untuk membedah tugas & luaran.</p>
+
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Anggota Terdaftar:</h4>
+                      {registered.length === 0 ? (
+                        <p className="text-xs text-slate-500 italic py-2">Belum ada anggota yang diplot ke divisi ini.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-2.5">
+                          {registered.map((m) => (
+                            <div key={m.id} className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="text-sm font-bold text-white">{m.name}</div>
+                                <div className="text-xs text-indigo-400 font-semibold">{m.role}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-xs text-slate-500">NIM: {m.nim}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
+          </div>
+        )}
 
-            {/* Panel Detail Terintegrasi (Dinamis + Statis) */}
-            <div className="bg-slate-800/70 rounded-xl border border-slate-700/80 p-6 shadow-2xl">
-              {selectedDiv === 'all' ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
-                    <Icons.Users />
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-1">Silakan Pilih Divisi Di Atas</h3>
-                  <p className="text-slate-400 max-w-md mx-auto text-xs">
-                    Klik salah satu kartu divisi untuk melihat daftar personil aktif yang mengisi slot divisi tersebut secara real-time, rincian tupoksi kerja, serta deliverables dokumennya.
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  {/* Judul Detail */}
-                  <div className="flex items-center justify-between border-b border-slate-700/70 pb-4 mb-6">
-                    <div className="flex items-center gap-3">
-                      <span className="p-2 rounded-lg bg-indigo-600/20 text-indigo-400">
-                        {divMeta[selectedDiv].icon}
-                      </span>
-                      <div>
-                        <h2 className="text-xl font-bold text-white">{divMeta[selectedDiv].title}</h2>
-                        <p className="text-xs text-slate-400">Alokasi Anggota Aktif: {getCount(selectedDiv)} / {divMeta[selectedDiv].max} Slot Terisi</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setSelectedDiv('all')}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold"
-                    >
-                      Tampilkan Semua Divisi
-                    </button>
-                  </div>
+        {/* ======================================= */}
+        {/* TAB 3: BANK MASALAH DESA                */}
+        {/* ======================================= */}
+        {currentTab === 'problems' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Repository Bank Masalah Desa</h2>
+                <p className="text-sm text-slate-400">Simpan temuan masalah lapangan secara instan agar tidak hilang.</p>
+              </div>
+              <a 
+                href="#form-masalah" 
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" /> Tambah Temuan Baru
+              </a>
+            </div>
 
-                  {/* 3 Kolom Utama Detail */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Kolom 1: Personil Aktif (Dinamis dari Supabase) */}
-                    <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
-                      <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <span>👥 Personil Aktif</span>
-                        <span className={`w-2 h-2 rounded-full ${isPlaceholder ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`} title={isPlaceholder ? "Mode Demo/Lokal" : "Koneksi Cloud Aktif"}></span>
-                      </h4>
-                      <div className="space-y-3">
-                        {members.filter(m => m.division === selectedDiv).length === 0 ? (
-                          <div className="text-center py-6 text-slate-500 italic text-xs">
-                            Belum ada nama yang didaftarkan. Masuk ke Admin Panel di kanan atas untuk mengisi anggota.
-                          </div>
-                        ) : (
-                          members.filter(m => m.division === selectedDiv).map(m => (
-                            <div key={m.id} className="bg-slate-800/80 p-3 rounded-lg border border-slate-700/60">
-                              <p className="text-sm font-bold text-white">{m.name}</p>
-                              <div className="flex justify-between items-center text-xs text-slate-400 mt-1">
-                                <span>NIM: {m.nim}</span>
-                                <span className="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded text-[10px] font-semibold border border-indigo-900/40">
-                                  {m.role}
-                                </span>
-                              </div>
+            {/* TABEL LIST MASALAH */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+              <div className="p-4 border-b border-slate-800 bg-slate-900/50">
+                <h3 className="font-bold text-white text-sm">Daftar Masalah Hasil Survei</h3>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-xs text-slate-400 uppercase bg-slate-950/40">
+                      <th className="p-4">Informasi Masalah</th>
+                      <th className="p-4">Kategori</th>
+                      <th className="p-4">Tingkat Keparahan</th>
+                      <th className="p-4">Status & Reporter</th>
+                      {isAdmin && <th className="p-4 text-right">Aksi Admin</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-sm">
+                    {problems.length === 0 ? (
+                      <tr>
+                        <td colSpan={isAdmin ? 5 : 4} className="p-8 text-center text-slate-500">
+                          Belum ada masalah desa yang dimasukkan ke bank data. Mulai survei lapangan!
+                        </td>
+                      </tr>
+                    ) : (
+                      problems.map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-800/30 transition-all">
+                          <td className="p-4 max-w-md">
+                            <div className="font-bold text-slate-200">{p.title}</div>
+                            <div className="text-xs text-slate-400 mt-1 line-clamp-2">{p.description}</div>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-xs font-semibold px-2 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-300">
+                              {p.category}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                              p.severity === 'Tinggi' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                              p.severity === 'Sedang' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                              'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                            }`}>
+                              {p.severity}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <div className="space-y-1">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase ${
+                                p.status === 'Disetujui' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                p.status === 'Ditolak' ? 'bg-slate-800 text-slate-500 border-slate-700' :
+                                'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                              }`}>
+                                {p.status}
+                              </span>
+                              <div className="text-xs text-slate-500 mt-1">Oleh: {p.reporter}</div>
                             </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
+                          </td>
+                          {isAdmin && (
+                            <td className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {p.status === 'Pending' && (
+                                  <>
+                                    <button 
+                                      onClick={() => handleUpdateProblemStatus(p.id, 'Disetujui')} 
+                                      className="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
+                                    >
+                                      Terima
+                                    </button>
+                                    <button 
+                                      onClick={() => handleUpdateProblemStatus(p.id, 'Ditolak')} 
+                                      className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
+                                    >
+                                      Tolak
+                                    </button>
+                                  </>
+                                )}
+                                <button 
+                                  onClick={() => handleRemoveProblem(p.id)} 
+                                  className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                                  title="Hapus Permanen"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                    {/* Kolom 2: Tupoksi Utama (Statis) */}
-                    <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
-                      <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">📋 Tugas Pokok (Tupoksi)</h4>
-                      <ul className="space-y-3 text-xs text-slate-300 leading-relaxed">
-                        {divMeta[selectedDiv].tupoksi.map((task, idx) => (
-                          <li key={idx} className="flex gap-2.5">
-                            <span className="text-emerald-400 font-bold">•</span>
-                            <span>{task}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Kolom 3: Output Nyata / Deliverables (Statis) */}
-                    <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
-                      <h4 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-3">📦 Output Nyata (Deliverables)</h4>
-                      <div className="space-y-2">
-                        {divMeta[selectedDiv].deliverables.map((deliv, idx) => (
-                          <div key={idx} className="flex items-center gap-2.5 bg-slate-800/50 p-3 rounded-lg border border-slate-800 text-xs">
-                            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                            <span className="text-slate-200 font-semibold">{deliv}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+            {/* FORM INPUT BARU */}
+            <div id="form-masalah" className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 max-w-2xl mx-auto">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <FolderPlus className="h-5 w-5 text-indigo-400" /> Form Input Masalah Desa (Saat Survei)
+              </h3>
+              <p className="text-xs text-slate-400">Tim Litbang atau siapa pun anggota tim yang sedang wawancara bisa menginputkan data ke sini.</p>
+              
+              <form onSubmit={handleAddProblem} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Judul Masalah Singkat</label>
+                    <input 
+                      type="text" 
+                      placeholder="Contoh: Air Bersih RT 02 Keruh"
+                      value={newProblem.title}
+                      onChange={(e) => setNewProblem({ ...newProblem, title: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Kategori</label>
+                    <select 
+                      value={newProblem.category}
+                      onChange={(e) => setNewProblem({ ...newProblem, category: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="Ekonomi/UMKM">Ekonomi/UMKM</option>
+                      <option value="Kesehatan/Sanitasi">Kesehatan/Sanitasi</option>
+                      <option value="Lingkungan Hidup">Lingkungan Hidup</option>
+                      <option value="Pendidikan/Pemuda">Pendidikan/Pemuda</option>
+                      <option value="Litbang & Data">Litbang & Data</option>
+                    </select>
                   </div>
                 </div>
-              )}
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">Deskripsi Detail Masalah</label>
+                  <textarea 
+                    placeholder="Tulis kronologi, dampak ke warga, atau perkiraan lokasi masalah..."
+                    rows={3}
+                    value={newProblem.description}
+                    onChange={(e) => setNewProblem({ ...newProblem, description: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Skala Urgensi / Keparahan</label>
+                    <select 
+                      value={newProblem.severity}
+                      onChange={(e) => setNewProblem({ ...newProblem, severity: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="Rendah">Rendah (Dampak Kecil)</option>
+                      <option value="Sedang">Sedang (Dampak Sedang)</option>
+                      <option value="Tinggi">Tinggi (Sangat Mendesak)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Nama Pelapor (Kamu)</label>
+                    <input 
+                      type="text" 
+                      placeholder="Contoh: Luki / Humas"
+                      value={newProblem.reporter}
+                      onChange={(e) => setNewProblem({ ...newProblem, reporter: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20"
+                >
+                  Kirim ke Bank Masalah Desa
+                </button>
+              </form>
             </div>
           </div>
         )}
 
-        {/* TAB 2: MATRIKS KERJA SAMA */}
-        {activeTab === 'matrix' && (
-          <div className="space-y-6">
-            <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800">
-              <h2 className="text-lg font-bold text-white mb-1">Hubungan Relasional Antar-Divisi</h2>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Di lapangan, 10 anggota tidak boleh bekerja terisolasi. Berikut adalah panduan kolaborasi timbal-balik agar tidak terjadi tumpang tindih (overlap) tugas.
-              </p>
+        {/* ======================================= */}
+        {/* TAB 4: LIVE TO-DO LIST & PROGRESS       */}
+        {/* ======================================= */}
+        {currentTab === 'tasks' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="border-b border-slate-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">Live Progress Tracker</h2>
+              <p className="text-sm text-slate-400">Papan tugas taktis untuk memantau siapa mengerjakan apa, kapan deadline, dan progres harian.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {relationshipMatrix.map((item, idx) => (
-                <div key={idx} className={`bg-slate-800/60 rounded-xl p-5 border border-slate-700/50 border-l-4 ${item.color}`}>
-                  <h3 className="text-md font-bold text-white mb-4 flex items-center gap-2">
-                    <span className="bg-slate-700 p-1 rounded text-slate-200"><Icons.Users /></span>
-                    Hubungan Timbal-Balik <span className="text-indigo-400 font-extrabold">{item.from}</span> :
+            {/* FORM INPUT TUGAS BARU (HANYA ADMIN) */}
+            {isAdmin && (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 className="font-bold text-white text-sm">Panel Tambah Tugas Baru</h3>
+                <form onSubmit={handleAddTask} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Nama Tugas / Jobdesk</label>
+                    <input 
+                      type="text" 
+                      placeholder="Contoh: Cetak Brosur Sosialisasi"
+                      value={newTask.title}
+                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Penanggung Jawab (PJ)</label>
+                    <select 
+                      value={newTask.assignee}
+                      onChange={(e) => setNewTask({ ...newTask, assignee: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="">Pilih Anggota/Divisi</option>
+                      <option value="BPH (Pimpinan)">BPH (Pimpinan)</option>
+                      <option value="Divisi Litbang">Divisi Litbang</option>
+                      <option value="Divisi Humas">Divisi Humas</option>
+                      <option value="Divisi Medok">Divisi Medok</option>
+                      {members.map(m => (
+                        <option key={m.id} value={m.name}>{m.name} ({m.role})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Tenggat Waktu (Deadline)</label>
+                    <input 
+                      type="date" 
+                      value={newTask.deadline}
+                      onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-lg text-sm font-semibold transition-all h-[38px] flex items-center justify-center gap-1"
+                  >
+                    <Plus className="h-4 w-4" /> Tambah Tugas
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* VISUALISASI KANBAN INTERAKTIF */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Kolom 1: Belum Mulai */}
+              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <h3 className="font-bold text-slate-300 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-slate-400" /> Belum Mulai
                   </h3>
-                  <div className="space-y-4">
-                    {item.relations.map((rel, rIdx) => (
-                      <div key={rIdx} className="bg-slate-900/40 p-3 rounded-lg border border-slate-850 text-xs">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <span className="font-bold text-slate-300">{item.from}</span>
-                          <span className="text-indigo-400"><Icons.ArrowRight /></span>
-                          <span className="font-bold text-indigo-300">Divisi {rel.to}</span>
-                        </div>
-                        <p className="text-slate-400 leading-relaxed">{rel.desc}</p>
-                      </div>
-                    ))}
-                  </div>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                    {tasks.filter(t => t.status === 'Belum Mulai').length}
+                  </span>
                 </div>
-              ))}
+
+                <div className="space-y-3 min-h-[300px]">
+                  {tasks.filter(t => t.status === 'Belum Mulai').length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-12">Tidak ada tugas di fase ini.</p>
+                  ) : (
+                    tasks.filter(t => t.status === 'Belum Mulai').map((t) => (
+                      <div key={t.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 shadow-md">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-slate-200">{t.title}</h4>
+                          <div className="text-xs text-slate-400">PJ: <strong className="text-slate-300">{t.assignee}</strong></div>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px]">
+                          <span className="text-rose-400">Deadline: {t.deadline}</span>
+                          <div className="flex gap-1">
+                            {isAdmin ? (
+                              <>
+                                <button 
+                                  onClick={() => handleUpdateTaskStatus(t.id, 'Sedang Berjalan')} 
+                                  className="text-indigo-400 hover:bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 font-semibold"
+                                >
+                                  Mulai
+                                </button>
+                                <button 
+                                  onClick={() => handleRemoveTask(t.id)} 
+                                  className="text-rose-400 hover:bg-rose-500/10 p-1 rounded"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-slate-500">View Only</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Kolom 2: Sedang Berjalan */}
+              <div className="bg-slate-900/50 border border-slate-850 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <h3 className="font-bold text-indigo-400 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-indigo-400 animate-pulse" /> Sedang Berjalan
+                  </h3>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400">
+                    {tasks.filter(t => t.status === 'Sedang Berjalan').length}
+                  </span>
+                </div>
+
+                <div className="space-y-3 min-h-[300px]">
+                  {tasks.filter(t => t.status === 'Sedang Berjalan').length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-12">Tidak ada tugas yang berjalan.</p>
+                  ) : (
+                    tasks.filter(t => t.status === 'Sedang Berjalan').map((t) => (
+                      <div key={t.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 shadow-md">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-slate-200">{t.title}</h4>
+                          <div className="text-xs text-slate-400">PJ: <strong className="text-slate-300">{t.assignee}</strong></div>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px]">
+                          <span className="text-amber-400">Deadline: {t.deadline}</span>
+                          <div className="flex gap-1">
+                            {isAdmin ? (
+                              <>
+                                <button 
+                                  onClick={() => handleUpdateTaskStatus(t.id, 'Selesai')} 
+                                  className="text-emerald-400 hover:bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 font-semibold"
+                                >
+                                  Selesai
+                                </button>
+                                <button 
+                                  onClick={() => handleRemoveTask(t.id)} 
+                                  className="text-rose-400 hover:bg-rose-500/10 p-1 rounded"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-slate-500">View Only</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Kolom 3: Selesai */}
+              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <h3 className="font-bold text-emerald-400 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-emerald-400" /> Selesai
+                  </h3>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">
+                    {tasks.filter(t => t.status === 'Selesai').length}
+                  </span>
+                </div>
+
+                <div className="space-y-3 min-h-[300px]">
+                  {tasks.filter(t => t.status === 'Selesai').length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-12">Belum ada tugas selesai.</p>
+                  ) : (
+                    tasks.filter(t => t.status === 'Selesai').map((t) => (
+                      <div key={t.id} className="bg-slate-900 border border-slate-850 p-4 rounded-xl space-y-3 opacity-70">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-slate-300 line-through">{t.title}</h4>
+                          <div className="text-xs text-slate-500">PJ: {t.assignee}</div>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px]">
+                          <span className="text-slate-500">Rampung</span>
+                          <div className="flex gap-1">
+                            {isAdmin ? (
+                              <>
+                                <button 
+                                  onClick={() => handleUpdateTaskStatus(t.id, 'Sedang Berjalan')} 
+                                  className="text-slate-400 hover:bg-slate-700 px-2 py-1 rounded border border-slate-700 font-semibold"
+                                >
+                                  Kembalikan
+                                </button>
+                                <button 
+                                  onClick={() => handleRemoveTask(t.id)} 
+                                  className="text-rose-400 hover:bg-rose-500/10 p-1 rounded"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-emerald-500 flex items-center gap-0.5">Verified ✓</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
         )}
 
-        {/* TAB 3: SIMULASI ALUR SURVEI */}
-        {activeTab === 'timeline' && (
-          <div className="space-y-6">
-            <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800">
-              <h2 className="text-lg font-bold text-white mb-1">Simulasi Pergerakan Anggota Saat Survei</h2>
-              <p className="text-xs text-slate-400">
-                Alur logis bagaimana seluruh divisi bahu-membahu dari tahap persiapan hingga penyortiran data masalah selesai.
-              </p>
+        {/* ======================================= */}
+        {/* TAB 5: ALUR KOLABORASI ESTAFET         */}
+        {/* ======================================= */}
+        {currentTab === 'alur' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="border-b border-slate-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">Alur Kolaborasi Estafet 5 Kelompok</h2>
+              <p className="text-sm text-slate-400">Sistem koordinasi antar kelompok agar proker utama berjalan mulus.</p>
             </div>
 
             <div className="space-y-8 relative before:absolute before:inset-0 before:left-4 md:before:left-1/2 before:w-0.5 before:bg-slate-800">
-              {timelineSteps.map((step, idx) => (
-                <div key={idx} className="relative flex flex-col md:flex-row md:justify-between items-start md:items-center">
-                  {/* Pointer Timeline */}
-                  <div className="absolute left-4 md:left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-indigo-600 border-4 border-slate-900 flex items-center justify-center text-xs font-bold text-white z-10">
-                    {idx + 1}
-                  </div>
-
-                  <div className={`w-full md:w-[45%] pl-10 md:pl-0 ${idx % 2 === 0 ? 'md:text-right' : 'md:order-2'}`}>
-                    <h3 className="text-lg font-bold text-indigo-400 mb-1">{step.stage}</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">{step.desc}</p>
-                  </div>
-
-                  <div className={`w-full md:w-[45%] mt-4 md:mt-0 pl-10 md:pl-0 ${idx % 2 === 0 ? 'md:order-2' : ''}`}>
-                    <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80 space-y-3">
-                      {step.acts.map((act, aIdx) => (
-                        <div key={aIdx} className="text-xs border-b border-slate-700/40 pb-2.5 last:border-0 last:pb-0">
-                          <span className="font-bold text-slate-200 block mb-1">🎬 Peran {act.div}</span>
-                          <p className="text-slate-400 leading-relaxed">{act.act}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              
+              {/* Langkah 1 */}
+              <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="absolute left-4 md:left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-indigo-600 border-4 border-slate-950 flex items-center justify-center font-bold text-sm text-white z-10">1</div>
+                <div className="w-full md:w-[45%] pl-10 md:pl-0 md:text-right space-y-2">
+                  <h3 className="font-bold text-white text-lg">Tahap Analisis Masalah (Gelombang 1)</h3>
+                  <p className="text-xs text-slate-400">Kelompok kita bersama kelompok mitra Gelombang 1 mendatangi desa untuk memetakan monografi, mewawancarai kades/warga, dan menginputkan semua masalah secara live di <strong>Bank Masalah Desa</strong> di web ini.</p>
+                  <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Selesai H+7 Survei</span>
                 </div>
-              ))}
+                <div className="hidden md:block w-[45%]"></div>
+              </div>
+
+              {/* Langkah 2 */}
+              <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="absolute left-4 md:left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-rose-600 border-4 border-slate-950 flex items-center justify-center font-bold text-sm text-white z-10">2</div>
+                <div className="hidden md:block w-[45%]"></div>
+                <div className="w-full md:w-[45%] pl-10 md:pl-0 space-y-2">
+                  <h3 className="font-bold text-white text-lg">Serah Terima & Rumusan Solusi (Kelompok Riset)</h3>
+                  <p className="text-xs text-slate-400">Semua data Bank Masalah dari web kita diserahkan secara administratif oleh Sekretaris ke <strong>Kelompok Riset</strong>. Kelompok Riset merancang produk/sistem solusi nyata yang fungsional.</p>
+                  <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">Fase Pengerjaan Produk</span>
+                </div>
+              </div>
+
+              {/* Langkah 3 */}
+              <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="absolute left-4 md:left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-amber-600 border-4 border-slate-950 flex items-center justify-center font-bold text-sm text-white z-10">3</div>
+                <div className="w-full md:w-[45%] pl-10 md:pl-0 md:text-right space-y-2">
+                  <h3 className="font-bold text-white text-lg">Implementasi & Pelatihan (Gelombang 2)</h3>
+                  <p className="text-xs text-slate-400">Setelah produk dari Kelompok Riset jadi, produk tersebut diserahkan ke <strong>Kelompok Gelombang 2</strong> untuk proses pemasangan, sosialisasi, dan pelatihan penggunaan produk kepada seluruh warga desa.</p>
+                  <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Output Terakhir KKN</span>
+                </div>
+                <div className="hidden md:block w-[45%]"></div>
+              </div>
+
             </div>
           </div>
         )}
 
-        {/* TAB 4: ADMIN PANEL DENGAN CO-AUTH & SINKRONISASI DATABASE */}
-        {!isLoading && activeTab === 'admin' && (
-          <div>
-            {!isLoggedIn ? (
-              /* SCREEN 1: FORM LOGIN ADMIN (TERKUNCI) */
-              <div className="max-w-md mx-auto bg-slate-800 rounded-2xl border border-slate-700 p-8 shadow-2xl mt-12 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-                  <Icons.Lock />
-                </div>
-                <h2 className="text-xl font-bold text-white mb-2">Admin Authentication</h2>
-                <p className="text-xs text-slate-400 mb-6">Masukkan kata sandi kelompok untuk mengedit database anggota KKN secara live.</p>
-                
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <input
-                      type="password"
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="Masukkan Password Kelompok"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white text-center focus:outline-none focus:border-indigo-500 placeholder-slate-500 font-sans tracking-wide"
-                      autoFocus
+        {/* ======================================= */}
+        {/* TAB 6: ADMIN PANEL (MANAGEMENT)        */}
+        {/* ======================================= */}
+        {currentTab === 'admin' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="border-b border-slate-800 pb-4">
+              <h2 className="text-2xl font-bold text-white">Admin Panel & Konfigurasi</h2>
+              <p className="text-sm text-slate-400">Amankan otorisasi admin untuk menambah struktur tim dan melakukan tracking data.</p>
+            </div>
+
+            {/* BOX KREDENSIAL DATABASE */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <Settings className="h-5 w-5 text-indigo-400" /> Pengaturan Koneksi Database Supabase Cloud
+              </h3>
+              <p className="text-xs text-slate-400">
+                Hubungkan dashboard ini ke cloud milikmu secara dinamis tanpa perlu edit manual kodingan di Vercel. Kredensial akan disimpan aman di LocalStorage browser ini.
+              </p>
+
+              <form onSubmit={handleSaveConfig} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">SUPABASE_URL</label>
+                    <input 
+                      type="text" 
+                      placeholder="https://yourprojectid.supabase.co"
+                      value={supabaseUrl}
+                      onChange={(e) => setSupabaseUrl(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
                     />
-                    {authError && <p className="text-xs text-rose-400 mt-2 text-left font-medium">⚠️ {authError}</p>}
                   </div>
-                  <button
-                    type="submit"
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-lg text-sm transition-all shadow-md cursor-pointer"
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">SUPABASE_ANON_KEY</label>
+                    <input 
+                      type="password" 
+                      placeholder="your-anon-key-here"
+                      value={supabaseAnonKey}
+                      onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    type="submit" 
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-all"
                   >
-                    Buka Akses Panel
+                    Simpan & Hubungkan Database Cloud
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={handleClearConfig}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
+                  >
+                    Reset & Gunakan Mode Simulasi (Local)
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* SEKSI LOGIN ADMIN */}
+            {!isAdmin ? (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 max-w-md mx-auto">
+                <div className="text-center space-y-2">
+                  <Lock className="h-10 w-10 text-indigo-500 mx-auto" />
+                  <h3 className="font-bold text-white text-lg">Masuk Sebagai Admin</h3>
+                  <p className="text-xs text-slate-400">Hanya Ketua Kelompok yang boleh memodifikasi penempatan struktur tim & tracking progress.</p>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Passcode Admin</label>
+                    <input 
+                      type="password" 
+                      placeholder="Ketik passcode kkn10hebat..."
+                      value={passcode}
+                      onChange={(e) => setPasscode(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 text-center font-mono"
+                    />
+                  </div>
+                  {adminError && <div className="text-xs text-rose-400 text-center">{adminError}</div>}
+                  <button 
+                    type="submit" 
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-lg text-sm font-semibold transition-all"
+                  >
+                    Otorisasi Admin
                   </button>
                 </form>
-
-                <div className="mt-6 border-t border-slate-700/60 pt-4 text-left">
-                  <p className="text-[10px] text-slate-500 italic text-center">
-                    💡 Petunjuk Testing: Password-nya adalah <strong className="text-slate-400 font-semibold">kkn10hebat</strong>
-                  </p>
-                </div>
               </div>
             ) : (
-              /* SCREEN 2: ADMIN PANEL YANG SUDAH TERBUKA */
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Kolom Kiri: Form Input */}
-                <div className="bg-slate-800/80 p-6 rounded-xl border border-slate-700 shadow-xl h-fit">
-                  <div className="flex justify-between items-center mb-4 border-b border-slate-700/60 pb-3">
-                    <h2 className="text-lg font-bold text-white">📝 Tambah Anggota KKN</h2>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold bg-rose-950/30 hover:bg-rose-950/60 border border-rose-900/40 px-2.5 py-1 rounded cursor-pointer transition-all"
-                      title="Kunci Kembali Admin Panel"
-                    >
-                      <Icons.Logout />
-                      <span>Lock</span>
-                    </button>
+              <div className="space-y-6">
+                
+                {/* STATUS BAR LOGOUT */}
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-center justify-between">
+                  <div className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+                    <Unlock className="h-4 w-4" /> Otorisasi Admin Aktif. Kamu sekarang bebas melakukan manajemen tim.
                   </div>
+                  <button 
+                    onClick={handleLogout} 
+                    className="text-xs font-bold text-rose-400 hover:underline"
+                  >
+                    Keluar Admin Mode
+                  </button>
+                </div>
 
-                  <form onSubmit={handleAddMember} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Nama Lengkap</label>
-                      <input
-                        type="text"
-                        value={inputNama}
-                        onChange={(e) => setInputNama(e.target.value)}
-                        placeholder="Contoh: Luki Artur"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                {/* FORM MANAJEMEN ANGGOTA BARU */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Form Tambah Anggota */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 lg:col-span-1">
+                    <h3 className="font-bold text-white text-sm">Plot Anggota ke Divisi</h3>
+                    <form onSubmit={handleAddMember} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-300">Nama Lengkap Anggota</label>
+                        <input 
+                          type="text" 
+                          placeholder="Nama lengkap anggota..."
+                          value={newMember.name}
+                          onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                          required
+                        />
+                      </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">NIM (Nomor Induk Mahasiswa)</label>
-                      <input
-                        type="text"
-                        value={inputNim}
-                        onChange={(e) => setInputNim(e.target.value)}
-                        placeholder="Contoh: 20240040XXX"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-300">NIM (Nomor Induk Mahasiswa)</label>
+                        <input 
+                          type="text" 
+                          placeholder="Nomor NIM resmi..."
+                          value={newMember.nim}
+                          onChange={(e) => setNewMember({ ...newMember, nim: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                          required
+                        />
+                      </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Pilih Penempatan Divisi</label>
-                      <select
-                        value={inputDivisi}
-                        onChange={(e) => setInputDivisi(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-300">Divisi Penempatan</label>
+                        <select 
+                          value={newMember.division}
+                          onChange={(e) => setNewMember({ ...newMember, division: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="bph">Pimpinan Inti (BPH) - Maks 3</option>
+                          <option value="litbang">Divisi Litbang & Data - Maks 3</option>
+                          <option value="humas">Divisi Humas - Maks 2</option>
+                          <option value="medok">Divisi Medok - Maks 2</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-300">Peran Spesifik / Jobdesk</label>
+                        <input 
+                          type="text" 
+                          placeholder="Contoh: Koordinator Riset / Sekretaris"
+                          value={newMember.role}
+                          onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+
+                      <button 
+                        type="submit" 
+                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-lg text-sm font-semibold transition-all shadow-lg"
                       >
-                        <option value="pimpinan">Pimpinan Inti (Maks 2)</option>
-                        <option value="litbang">Divisi Litbang & Data (Maks 3)</option>
-                        <option value="humas">Divisi Humas & Lembaga (Maks 3)</option>
-                        <option value="medok">Divisi Media & Dokumentasi (Maks 2)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Peran Spesifik / Jobdesk</label>
-                      <input
-                        type="text"
-                        value={inputPeran}
-                        onChange={(e) => setInputPeran(e.target.value)}
-                        placeholder="Contoh: Peneliti Sektor UMKM / Bendahara"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-4 rounded-lg text-sm transition-all shadow-md cursor-pointer"
-                    >
-                      {isPlaceholder ? "➕ Masukkan ke Struktur (Lokal)" : "➕ Kirim ke Cloud Supabase"}
-                    </button>
-                  </form>
-                </div>
-
-                {/* Kolom Kanan: Daftar Anggota Terdaftar */}
-                <div className="lg:col-span-2 bg-slate-800/40 p-6 rounded-xl border border-slate-800">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold text-white">Daftar Anggota ({isPlaceholder ? "Mode Demo" : "Database Cloud"}) ({members.length} / 10)</h2>
-                    <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                      {isPlaceholder ? "Demo Standalone Active" : "Real-time Database Active"}
-                    </span>
+                        Daftarkan Anggota Baru
+                      </button>
+                    </form>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs text-slate-300">
-                      <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
-                        <tr>
-                          <th className="p-3">Nama & NIM</th>
-                          <th className="p-3">Divisi KKN</th>
-                          <th className="p-3">Jobdesk</th>
-                          <th className="p-3 text-center">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800">
-                        {members.map((m) => (
-                          <tr key={m.id} className="hover:bg-slate-800/50 transition-colors">
-                            <td className="p-3">
-                              <p className="font-bold text-white">{m.name}</p>
-                              <p className="text-[10px] text-slate-500">NIM. {m.nim}</p>
-                            </td>
-                            <td className="p-3">
-                              <span className="px-2 py-0.5 bg-slate-900 rounded text-[10px] font-semibold text-indigo-400 border border-slate-800">
-                                {divMeta[m.division].title}
-                              </span>
-                            </td>
-                            <td className="p-3 text-slate-400 font-medium">{m.role}</td>
-                            <td className="p-3 text-center">
-                              <button
-                                onClick={() => handleRemoveMember(m.id)}
-                                className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-900/50 text-rose-400 rounded transition-all cursor-pointer"
-                                title="Hapus anggota"
-                              >
-                                <Icons.Trash />
-                              </button>
-                            </td>
+                  {/* Tabel Pemantauan Anggota Aktif */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 lg:col-span-2">
+                    <h3 className="font-bold text-white text-sm">Review & Pengelolaan Anggota</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400 bg-slate-950/40">
+                            <th className="p-3">Nama & NIM</th>
+                            <th className="p-3">Divisi</th>
+                            <th className="p-3">Jabatan Spesifik</th>
+                            <th className="p-3 text-right">Opsi</th>
                           </tr>
-                        ))}
-                        {members.length === 0 && (
-                          <tr>
-                            <td colSpan="4" className="text-center py-8 text-slate-500 italic">
-                              Struktur kosong, silakan input anggota baru.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                          {members.map((m) => (
+                            <tr key={m.id} className="hover:bg-slate-800/20">
+                              <td className="p-3">
+                                <div className="font-bold text-slate-200">{m.name}</div>
+                                <div className="text-[10px] text-slate-500">NIM: {m.nim}</div>
+                              </td>
+                              <td className="p-3 font-semibold text-indigo-400">
+                                {divisions[m.division]?.name}
+                              </td>
+                              <td className="p-3 text-slate-300">{m.role}</td>
+                              <td className="p-3 text-right">
+                                <button 
+                                  onClick={() => handleRemoveMember(m.id)} 
+                                  className="text-rose-400 hover:bg-rose-500/10 p-1 rounded"
+                                  title="Keluarkan dari Struktur"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
+
                 </div>
+
               </div>
             )}
+
           </div>
         )}
-      </div>
+
+      </main>
+
+      {/* FOOTER */}
+      <footer className="border-t border-slate-800 py-6 text-center text-xs text-slate-500 bg-slate-950 mt-12 space-y-2">
+        <p>© 2026 KKN Sinergi-Workspace. Diarsiteki oleh Ketua Kelompok 10 KKN dengan React & Supabase.</p>
+        <p className="text-[10px] text-slate-600">Dibuat menggunakan Font Times New Roman 12pt (Standar Laporan Akademik) & Palet Sage Navy.</p>
+      </footer>
+
     </div>
   );
 }
