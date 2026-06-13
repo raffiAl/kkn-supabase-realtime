@@ -20,7 +20,7 @@ import {
   ExternalLink,
   Lock,
   Unlock,
-} from "https://esm.sh/lucide-react/dist/esm/lucide-react";
+} from "lucide-react";
 
 // --- INISIALISASI SUPABASE DENGAN METODE ESM ---
 const getSupabaseClient = () => {
