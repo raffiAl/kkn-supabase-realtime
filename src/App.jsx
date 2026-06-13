@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 import {
   Users,
   BookOpen,
@@ -13,22 +13,21 @@ import {
   FolderPlus,
   ChevronRight,
   Layers,
-  FileText,
   UserCheck,
   TrendingUp,
   MapPin,
   ExternalLink,
   Lock,
   Unlock,
+  X,
 } from "lucide-react";
 
-// --- INISIALISASI SUPABASE DENGAN METODE ESM ---
+// --- INISIALISASI SUPABASE DENGAN STANDAR IMPORTS ---
 const getSupabaseClient = () => {
   const url = localStorage.getItem("SUPABASE_URL") || "";
   const key = localStorage.getItem("SUPABASE_ANON_KEY") || "";
   if (url && key) {
     try {
-      // Menggunakan fungsi createClient hasil import ESM di atas
       return createClient(url, key);
     } catch (e) {
       console.error("Gagal menginisialisasi Supabase:", e);
@@ -44,6 +43,7 @@ export default function App() {
   const [passcode, setPasscode] = useState("");
   const [adminError, setAdminError] = useState("");
   const [dbStatus, setDbStatus] = useState("Menginisialisasi...");
+  const [errorMessage, setErrorMessage] = useState(""); // Menyimpan pesan log error untuk diagnostics tim
 
   // Supabase Configuration States
   const [supabaseUrl, setSupabaseUrl] = useState(
@@ -185,20 +185,34 @@ export default function App() {
   useEffect(() => {
     const client = getSupabaseClient();
     if (client) {
-      setDbStatus("Koneksi Supabase Cloud Aktif (ESM) 🟢");
+      setDbStatus("Koneksi Supabase Cloud Aktif 🟢");
 
       // 1. Fetch Awal Data
       const loadData = async () => {
-        const { data: dbMembers } = await client.from("members").select("*");
-        if (dbMembers && dbMembers.length > 0) setMembers(dbMembers);
+        try {
+          const { data: dbMembers, error: errMembers } = await client
+            .from("members")
+            .select("*");
+          if (errMembers) throw errMembers;
+          if (dbMembers) setMembers(dbMembers);
 
-        const { data: dbProblems } = await client
-          .from("village_problems")
-          .select("*");
-        if (dbProblems && dbProblems.length > 0) setProblems(dbProblems);
+          const { data: dbProblems, error: errProblems } = await client
+            .from("village_problems")
+            .select("*");
+          if (errProblems) throw errProblems;
+          if (dbProblems) setProblems(dbProblems);
 
-        const { data: dbTasks } = await client.from("tasks").select("*");
-        if (dbTasks && dbTasks.length > 0) setTasks(dbTasks);
+          const { data: dbTasks, error: errTasks } = await client
+            .from("tasks")
+            .select("*");
+          if (errTasks) throw errTasks;
+          if (dbTasks) setTasks(dbTasks);
+        } catch (err) {
+          console.error("Gagal memuat data dari Supabase:", err);
+          setErrorMessage(
+            `Database Gagal Merespons: ${err.message || "Periksa status aturan RLS / skema tabel Anda."}`,
+          );
+        }
       };
       loadData();
 
@@ -246,7 +260,7 @@ export default function App() {
     }
   }, [supabaseUrl, supabaseAnonKey]);
 
-  // --- CONTROLLERS ---
+  // --- CONTROLLERS WITH ERROR DIAGNOSTICS ---
 
   // Konfigurasi Database Supabase
   const handleSaveConfig = (e) => {
@@ -283,6 +297,7 @@ export default function App() {
   // Tambah Anggota (Admin)
   const handleAddMember = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
     const currentCount = members.filter(
       (m) => m.division === newMember.division,
     ).length;
@@ -304,7 +319,12 @@ export default function App() {
     const client = getSupabaseClient();
     if (client) {
       const { error } = await client.from("members").insert([memberData]);
-      if (error) console.error(error);
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `Gagal menambah Anggota: ${error.message} (Kode: ${error.code || "RLS_BLOCK"})`,
+        );
+      }
     } else {
       setMembers([...members, memberData]);
     }
@@ -314,9 +334,13 @@ export default function App() {
 
   // Hapus Anggota (Admin)
   const handleRemoveMember = async (id) => {
+    setErrorMessage("");
     const client = getSupabaseClient();
     if (client) {
-      await client.from("members").delete().eq("id", id);
+      const { error } = await client.from("members").delete().eq("id", id);
+      if (error) {
+        setErrorMessage(`Gagal menghapus Anggota: ${error.message}`);
+      }
     } else {
       setMembers(members.filter((m) => m.id !== id));
     }
@@ -325,6 +349,7 @@ export default function App() {
   // Tambah Masalah Desa (Publik/Semua Divisi Bisa Input Saat Survei)
   const handleAddProblem = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
     if (!newProblem.title || !newProblem.description) {
       alert("Harap isi semua kolom judul dan deskripsi masalah!");
       return;
@@ -345,7 +370,12 @@ export default function App() {
       const { error } = await client
         .from("village_problems")
         .insert([problemData]);
-      if (error) console.error(error);
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          `Gagal menyimpan masalah desa: ${error.message}. Periksa apakah tabel 'village_problems' sudah dibuat di Supabase Anda.`,
+        );
+      }
     } else {
       setProblems([...problems, problemData]);
     }
@@ -362,12 +392,15 @@ export default function App() {
 
   // Update Status Masalah (Admin)
   const handleUpdateProblemStatus = async (id, newStatus) => {
+    setErrorMessage("");
     const client = getSupabaseClient();
     if (client) {
-      await client
+      const { error } = await client
         .from("village_problems")
         .update({ status: newStatus })
         .eq("id", id);
+      if (error)
+        setErrorMessage(`Gagal memperbarui status masalah: ${error.message}`);
     } else {
       setProblems(
         problems.map((p) => (p.id === id ? { ...p, status: newStatus } : p)),
@@ -377,9 +410,14 @@ export default function App() {
 
   // Hapus Masalah (Admin)
   const handleRemoveProblem = async (id) => {
+    setErrorMessage("");
     const client = getSupabaseClient();
     if (client) {
-      await client.from("village_problems").delete().eq("id", id);
+      const { error } = await client
+        .from("village_problems")
+        .delete()
+        .eq("id", id);
+      if (error) setErrorMessage(`Gagal menghapus masalah: ${error.message}`);
     } else {
       setProblems(problems.filter((p) => p.id !== id));
     }
@@ -388,6 +426,7 @@ export default function App() {
   // Tambah Tugas (Admin)
   const handleAddTask = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
     if (!newTask.title || !newTask.assignee) {
       alert("Mohon isi judul tugas dan penanggung jawab!");
       return;
@@ -404,7 +443,10 @@ export default function App() {
     const client = getSupabaseClient();
     if (client) {
       const { error } = await client.from("tasks").insert([taskData]);
-      if (error) console.error(error);
+      if (error) {
+        console.error(error);
+        setErrorMessage(`Gagal menyimpan tugas baru: ${error.message}`);
+      }
     } else {
       setTasks([...tasks, taskData]);
     }
@@ -417,11 +459,17 @@ export default function App() {
     });
   };
 
-  // Update Status Tugas (Admin/Kanban Drag)
+  // Update Status Tugas (Admin/Kanban)
   const handleUpdateTaskStatus = async (id, newStatus) => {
+    setErrorMessage("");
     const client = getSupabaseClient();
     if (client) {
-      await client.from("tasks").update({ status: newStatus }).eq("id", id);
+      const { error } = await client
+        .from("tasks")
+        .update({ status: newStatus })
+        .eq("id", id);
+      if (error)
+        setErrorMessage(`Gagal memperbarui status tugas: ${error.message}`);
     } else {
       setTasks(
         tasks.map((t) => (t.id === id ? { ...t, status: newStatus } : t)),
@@ -431,9 +479,11 @@ export default function App() {
 
   // Hapus Tugas (Admin)
   const handleRemoveTask = async (id) => {
+    setErrorMessage("");
     const client = getSupabaseClient();
     if (client) {
-      await client.from("tasks").delete().eq("id", id);
+      const { error } = await client.from("tasks").delete().eq("id", id);
+      if (error) setErrorMessage(`Gagal menghapus tugas: ${error.message}`);
     } else {
       setTasks(tasks.filter((t) => t.id !== id));
     }
@@ -455,7 +505,7 @@ export default function App() {
               </span>
             </h1>
             <p className="text-xs text-slate-400">
-              Pusat Database Masalah Desa & Kolaborasi Kerja Tim (ESM Mode)
+              Pusat Database Masalah Desa & Kolaborasi Kerja Tim
             </p>
           </div>
         </div>
@@ -483,6 +533,25 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* ERROR DIAGNOSTICS BANNER (UI PENYELAMAT SINKRONISASI) */}
+      {errorMessage && (
+        <div className="bg-rose-950/80 border-b border-rose-500/30 text-rose-200 px-4 py-3 md:px-8 flex items-center justify-between gap-4 animate-slideDown">
+          <div className="flex items-center gap-2.5 text-sm">
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />
+            <span>
+              <strong>Deteksi Error Supabase:</strong> {errorMessage}
+            </span>
+          </div>
+          <button
+            onClick={() => setErrorMessage("")}
+            className="p-1 hover:bg-rose-900/40 rounded text-rose-400 transition-all"
+            title="Sembunyikan log"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* NAVIGASI BAR */}
       <nav className="bg-slate-900 border-b border-slate-800 px-4 overflow-x-auto flex gap-1">
@@ -1259,7 +1328,7 @@ export default function App() {
                       <option value="Divisi Medok">Divisi Medok</option>
                       {members.map((m) => (
                         <option key={m.id} value={m.name}>
-                          {m.name} ({m.role})
+                          {m.name}
                         </option>
                       ))}
                     </select>
@@ -1551,9 +1620,7 @@ export default function App() {
                 </div>
                 <div className="hidden md:block w-[45%]"></div>
                 <div className="w-full md:w-[45%] pl-10 md:pl-0 space-y-2">
-                  {/* PENGGUNAAN IKON FILETEXT DI SINI */}
-                  <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-rose-400" />
+                  <h3 className="font-bold text-white text-lg">
                     Serah Terima & Rumusan Solusi (Kelompok Riset)
                   </h3>
                   <p className="text-xs text-slate-400">
@@ -1869,8 +1936,7 @@ export default function App() {
           dengan React & Supabase.
         </p>
         <p className="text-[10px] text-slate-600">
-          Dibuat menggunakan Font Times New Roman 12pt (Standar Laporan
-          Akademik) & Palet Sage Navy.
+          Dibuat menggunakan Font Times New Roman 12pt & Palet Sage Navy.
         </p>
       </footer>
     </div>
