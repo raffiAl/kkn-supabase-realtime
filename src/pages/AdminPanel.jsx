@@ -30,7 +30,7 @@ export default function AdminPanel({
       setIsAdmin(true);
       setAdminError("");
     } else {
-      setAdminError("Passcode Salah! Coba cek instruksi ketua.");
+      setAdminError("Passcode Salah! Coba cek instruksi ketua (22B).");
     }
   };
 
