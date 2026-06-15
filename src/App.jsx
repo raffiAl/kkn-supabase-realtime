@@ -20,20 +20,43 @@ import {
   Lock,
   Unlock,
   X,
+  Copy,
 } from "lucide-react";
 
-// --- INISIALISASI SUPABASE DENGAN STANDAR IMPORTS ---
+// ====================================================================
+// 🔑 KREDENSIAL DEFAULT KELOMPOK (PAJANG DI SINI)
+// Ganti nilai di bawah ini dengan Anon Key asli kelompokmu agar temanmu tinggal salin
+// ====================================================================
+const DEFAULT_GROUP_URL = "https://vbziomrdbsmsnqegkqwq.supabase.co";
+const DEFAULT_GROUP_ANON_KEY = "sb_publishable_gaDYw_p-U56_ejevdObJvw_74n6scNF";
+
+// --- ARSITEKTUR SINGLETON SUPABASE CLIENT ---
+let supabaseInstance = null;
+
 const getSupabaseClient = () => {
   const url = localStorage.getItem("SUPABASE_URL") || "";
   const key = localStorage.getItem("SUPABASE_ANON_KEY") || "";
-  if (url && key) {
+
+  if (!url || !key) {
+    supabaseInstance = null;
+    return null;
+  }
+
+  if (
+    !supabaseInstance ||
+    supabaseInstance.supabaseUrl !== url ||
+    supabaseInstance.supabaseKey !== key
+  ) {
     try {
-      return createClient(url, key);
+      supabaseInstance = createClient(url, key);
+      supabaseInstance.supabaseUrl = url;
+      supabaseInstance.supabaseKey = key;
     } catch (e) {
       console.error("Gagal menginisialisasi Supabase:", e);
+      supabaseInstance = null;
     }
   }
-  return null;
+  return supabaseInstance;
 };
 
 export default function App() {
@@ -43,7 +66,11 @@ export default function App() {
   const [passcode, setPasscode] = useState("");
   const [adminError, setAdminError] = useState("");
   const [dbStatus, setDbStatus] = useState("Menginisialisasi...");
-  const [errorMessage, setErrorMessage] = useState(""); // Menyimpan pesan log error untuk diagnostics tim
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // Copy Status UI Feedback State
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
 
   // Supabase Configuration States
   const [supabaseUrl, setSupabaseUrl] = useState(
@@ -56,21 +83,21 @@ export default function App() {
   // --- STATE DATA ---
   const [members, setMembers] = useState([
     {
-      id: "1",
+      id: 1,
       name: "Raffi",
       nim: "20240100101",
       division: "bph",
       role: "Ketua Kelompok & System Architect",
     },
     {
-      id: "2",
+      id: 2,
       name: "Siti Rahma",
       nim: "20240100102",
       division: "bph",
       role: "Sekretaris Kelompok & Admin Dokumen",
     },
     {
-      id: "3",
+      id: 3,
       name: "Fajar Nugraha",
       nim: "20240100103",
       division: "bph",
@@ -80,7 +107,7 @@ export default function App() {
 
   const [problems, setProblems] = useState([
     {
-      id: "1",
+      id: 4,
       title: "Minimnya Peta Digital Potensi Desa",
       category: "Litbang & Data",
       description:
@@ -90,7 +117,7 @@ export default function App() {
       reporter: "Divisi Litbang",
     },
     {
-      id: "2",
+      id: 5,
       title: "Saluran Irigasi Tersumbat Sampah Plastik",
       category: "Lingkungan",
       description:
@@ -103,28 +130,28 @@ export default function App() {
 
   const [tasks, setTasks] = useState([
     {
-      id: "1",
+      id: 6,
       title: "Menyusun Surat Izin Survei Desa",
       assignee: "Siti Rahma",
       deadline: "2026-06-15",
       status: "Selesai",
     },
     {
-      id: "2",
+      id: 7,
       title: "Menyusun 15 Draf Pertanyaan Wawancara",
       assignee: "Divisi Litbang",
       deadline: "2026-06-16",
       status: "Sedang Berjalan",
     },
     {
-      id: "3",
+      id: 8,
       title: "Koordinasi Jadwal dengan Kepala Desa",
       assignee: "Divisi Humas",
       deadline: "2026-06-16",
       status: "Belum Mulai",
     },
     {
-      id: "4",
+      id: 9,
       title: "Membuat Brand Guidelines Akun IG Bersama",
       assignee: "Divisi Medok",
       deadline: "2026-06-18",
@@ -187,7 +214,6 @@ export default function App() {
     if (client) {
       setDbStatus("Koneksi Supabase Cloud Aktif 🟢");
 
-      // 1. Fetch Awal Data
       const loadData = async () => {
         try {
           const { data: dbMembers, error: errMembers } = await client
@@ -210,13 +236,13 @@ export default function App() {
         } catch (err) {
           console.error("Gagal memuat data dari Supabase:", err);
           setErrorMessage(
-            `Database Gagal Merespons: ${err.message || "Periksa status aturan RLS / skema tabel Anda."}`,
+            `Database Gagal Merespons: ${err.message || "Periksa status RLS / skema tabel Anda."}`,
           );
         }
       };
+
       loadData();
 
-      // 2. Real-time Subscription (Broadcast)
       const membersChan = client
         .channel("members_realtime")
         .on(
@@ -260,9 +286,29 @@ export default function App() {
     }
   }, [supabaseUrl, supabaseAnonKey]);
 
-  // --- CONTROLLERS WITH ERROR DIAGNOSTICS ---
+  // --- UTILITY FOR CLIPBOARD COPY (ANTI-GAGAL UNTUK IFRAME VERCEL) ---
+  const handleCopyToClipboard = (textToCopy, target) => {
+    const tempTextArea = document.createElement("textarea");
+    tempTextArea.value = textToCopy;
+    document.body.appendChild(tempTextArea);
+    tempTextArea.select();
+    try {
+      document.execCommand("copy");
+      if (target === "url") {
+        setCopiedUrl(true);
+        setTimeout(() => setCopiedUrl(false), 2000);
+      } else {
+        setCopiedKey(true);
+        setTimeout(() => setCopiedKey(false), 2000);
+      }
+    } catch (err) {
+      console.error("Gagal menyalin teks ke clipboard: ", err);
+    }
+    document.body.removeChild(tempTextArea);
+  };
 
-  // Konfigurasi Database Supabase
+  // --- CONTROLLERS ---
+
   const handleSaveConfig = (e) => {
     e.preventDefault();
     localStorage.setItem("SUPABASE_URL", supabaseUrl);
@@ -278,7 +324,6 @@ export default function App() {
     window.location.reload();
   };
 
-  // Autentikasi Admin Panel
   const handleLogin = (e) => {
     e.preventDefault();
     if (passcode === "kkn10hebat") {
@@ -294,7 +339,6 @@ export default function App() {
     setPasscode("");
   };
 
-  // Tambah Anggota (Admin)
   const handleAddMember = async (e) => {
     e.preventDefault();
     setErrorMessage("");
@@ -309,7 +353,7 @@ export default function App() {
     }
 
     const memberData = {
-      id: Date.now(), // Menggunakan angka murni agar cocok dengan tipe int8 Supabase
+      id: Date.now(),
       name: newMember.name,
       nim: newMember.nim,
       division: newMember.division,
@@ -321,9 +365,7 @@ export default function App() {
       const { error } = await client.from("members").insert([memberData]);
       if (error) {
         console.error(error);
-        setErrorMessage(
-          `Gagal menambah Anggota: ${error.message} (Kode: ${error.code || "RLS_BLOCK"})`,
-        );
+        setErrorMessage(`Gagal menambah Anggota: ${error.message}`);
       }
     } else {
       setMembers([...members, memberData]);
@@ -332,12 +374,14 @@ export default function App() {
     setNewMember({ name: "", nim: "", division: "bph", role: "" });
   };
 
-  // Hapus Anggota (Admin)
   const handleRemoveMember = async (id) => {
     setErrorMessage("");
     const client = getSupabaseClient();
     if (client) {
-      const { error } = await client.from("members").delete().eq("id", id);
+      const { error } = await client
+        .from("members")
+        .delete()
+        .eq("id", Number(id));
       if (error) {
         setErrorMessage(`Gagal menghapus Anggota: ${error.message}`);
       }
@@ -346,7 +390,6 @@ export default function App() {
     }
   };
 
-  // Tambah Masalah Desa (Publik/Semua Divisi Bisa Input Saat Survei)
   const handleAddProblem = async (e) => {
     e.preventDefault();
     setErrorMessage("");
@@ -355,9 +398,8 @@ export default function App() {
       return;
     }
 
-    //  KODE BARU (BENAR):
     const problemData = {
-      id: Date.now(), // Menggunakan angka murni
+      id: Date.now(),
       title: newProblem.title,
       category: newProblem.category,
       description: newProblem.description,
@@ -374,7 +416,7 @@ export default function App() {
       if (error) {
         console.error(error);
         setErrorMessage(
-          `Gagal menyimpan masalah desa: ${error.message}. Periksa apakah tabel 'village_problems' sudah dibuat di Supabase Anda.`,
+          `Gagal menyimpan masalah: ${error.message}. Pastikan tabel 'village_problems' dengan RLS aktif sudah dibuat.`,
         );
       }
     } else {
@@ -388,10 +430,8 @@ export default function App() {
       severity: "Sedang",
       reporter: "",
     });
-    setCurrentTab("problems");
   };
 
-  // Update Status Masalah (Admin)
   const handleUpdateProblemStatus = async (id, newStatus) => {
     setErrorMessage("");
     const client = getSupabaseClient();
@@ -399,9 +439,10 @@ export default function App() {
       const { error } = await client
         .from("village_problems")
         .update({ status: newStatus })
-        .eq("id", id);
-      if (error)
+        .eq("id", Number(id));
+      if (error) {
         setErrorMessage(`Gagal memperbarui status masalah: ${error.message}`);
+      }
     } else {
       setProblems(
         problems.map((p) => (p.id === id ? { ...p, status: newStatus } : p)),
@@ -409,7 +450,6 @@ export default function App() {
     }
   };
 
-  // Hapus Masalah (Admin)
   const handleRemoveProblem = async (id) => {
     setErrorMessage("");
     const client = getSupabaseClient();
@@ -417,14 +457,15 @@ export default function App() {
       const { error } = await client
         .from("village_problems")
         .delete()
-        .eq("id", id);
-      if (error) setErrorMessage(`Gagal menghapus masalah: ${error.message}`);
+        .eq("id", Number(id));
+      if (error) {
+        setErrorMessage(`Gagal menghapus masalah: ${error.message}`);
+      }
     } else {
       setProblems(problems.filter((p) => p.id !== id));
     }
   };
 
-  // Tambah Tugas (Admin)
   const handleAddTask = async (e) => {
     e.preventDefault();
     setErrorMessage("");
@@ -433,9 +474,8 @@ export default function App() {
       return;
     }
 
-    //  KODE BARU (BENAR):
     const taskData = {
-      id: Date.now(), // Menggunakan angka murni
+      id: Date.now(),
       title: newTask.title,
       assignee: newTask.assignee,
       deadline: newTask.deadline || "-",
@@ -447,7 +487,9 @@ export default function App() {
       const { error } = await client.from("tasks").insert([taskData]);
       if (error) {
         console.error(error);
-        setErrorMessage(`Gagal menyimpan tugas baru: ${error.message}`);
+        setErrorMessage(
+          `Gagal menyimpan tugas baru: ${error.message}. Pastikan tabel 'tasks' dengan RLS aktif sudah dibuat.`,
+        );
       }
     } else {
       setTasks([...tasks, taskData]);
@@ -461,7 +503,6 @@ export default function App() {
     });
   };
 
-  // Update Status Tugas (Admin/Kanban)
   const handleUpdateTaskStatus = async (id, newStatus) => {
     setErrorMessage("");
     const client = getSupabaseClient();
@@ -469,9 +510,10 @@ export default function App() {
       const { error } = await client
         .from("tasks")
         .update({ status: newStatus })
-        .eq("id", id);
-      if (error)
+        .eq("id", Number(id));
+      if (error) {
         setErrorMessage(`Gagal memperbarui status tugas: ${error.message}`);
+      }
     } else {
       setTasks(
         tasks.map((t) => (t.id === id ? { ...t, status: newStatus } : t)),
@@ -479,13 +521,17 @@ export default function App() {
     }
   };
 
-  // Hapus Tugas (Admin)
   const handleRemoveTask = async (id) => {
     setErrorMessage("");
     const client = getSupabaseClient();
     if (client) {
-      const { error } = await client.from("tasks").delete().eq("id", id);
-      if (error) setErrorMessage(`Gagal menghapus tugas: ${error.message}`);
+      const { error } = await client
+        .from("tasks")
+        .delete()
+        .eq("id", Number(id));
+      if (error) {
+        setErrorMessage(`Gagal menghapus tugas: ${error.message}`);
+      }
     } else {
       setTasks(tasks.filter((t) => t.id !== id));
     }
@@ -513,7 +559,6 @@ export default function App() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Database Status Indicator */}
           <div className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 font-mono text-slate-300">
             {dbStatus}
           </div>
@@ -536,7 +581,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* ERROR DIAGNOSTICS BANNER (UI PENYELAMAT SINKRONISASI) */}
+      {/* ERROR DIAGNOSTICS BANNER */}
       {errorMessage && (
         <div className="bg-rose-950/80 border-b border-rose-500/30 text-rose-200 px-4 py-3 md:px-8 flex items-center justify-between gap-4 animate-slideDown">
           <div className="flex items-center gap-2.5 text-sm">
@@ -548,7 +593,6 @@ export default function App() {
           <button
             onClick={() => setErrorMessage("")}
             className="p-1 hover:bg-rose-900/40 rounded text-rose-400 transition-all"
-            title="Sembunyikan log"
           >
             <X className="h-4 w-4" />
           </button>
@@ -616,9 +660,7 @@ export default function App() {
 
       {/* CONTAINER CONTENT */}
       <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
-        {/* ======================================= */}
-        {/* TAB 1: DASHBOARD OVERVIEW               */}
-        {/* ======================================= */}
+        {/* TAB 1: DASHBOARD OVERVIEW */}
         {currentTab === "dashboard" && (
           <div className="space-y-8 animate-fadeIn">
             {/* CARD BANNER INFORMASI */}
@@ -904,9 +946,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ======================================= */}
-        {/* TAB 2: PETA STRUKTUR & TUPOKSI          */}
-        {/* ======================================= */}
+        {/* TAB 2: PETA STRUKTUR & TUPOKSI */}
         {currentTab === "struktur" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="border-b border-slate-800 pb-4">
@@ -996,9 +1036,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ======================================= */}
-        {/* TAB 3: BANK MASALAH DESA                */}
-        {/* ======================================= */}
+        {/* TAB 3: BANK MASALAH DESA */}
         {currentTab === "problems" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
@@ -1273,9 +1311,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ======================================= */}
-        {/* TAB 4: LIVE TO-DO LIST & PROGRESS       */}
-        {/* ======================================= */}
+        {/* TAB 4: LIVE TO-DO LIST & PROGRESS */}
         {currentTab === "tasks" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="border-b border-slate-800 pb-4">
@@ -1577,9 +1613,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ======================================= */}
-        {/* TAB 5: ALUR KOLABORASI ESTAFET         */}
-        {/* ======================================= */}
+        {/* TAB 5: ALUR KOLABORASI ESTAFET */}
         {currentTab === "alur" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="border-b border-slate-800 pb-4">
@@ -1662,9 +1696,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ======================================= */}
-        {/* TAB 6: ADMIN PANEL (MANAGEMENT)        */}
-        {/* ======================================= */}
+        {/* TAB 6: ADMIN PANEL (MANAGEMENT) */}
         {currentTab === "admin" && (
           <div className="space-y-6 animate-fadeIn">
             <div className="border-b border-slate-800 pb-4">
@@ -1677,16 +1709,86 @@ export default function App() {
               </p>
             </div>
 
-            {/* BOX KREDENSIAL DATABASE */}
+            {/* BOX 1: KREDENSIAL AKSES DATABASE BERSAMA (FITUR TAMBAHAN YANG DIMINTA) */}
+            <div className="bg-gradient-to-br from-indigo-950/50 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🔑</span>
+                <h3 className="font-bold text-white text-md">
+                  Kredensial Akses Database Bersama (Tinggal Salin)
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Pajang bagian ini di web agar teman satu tim KKN tinggal
+                menyalin kredensial ini dan menempelkannya ke panel konfigurasi
+                perangkat masing-masing tanpa harus login ulang ke Supabase.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {/* Salin URL */}
+                <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-4">
+                  <div className="space-y-1 overflow-hidden">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Default Supabase URL
+                    </span>
+                    <code className="text-xs text-indigo-300 font-mono block truncate">
+                      {DEFAULT_GROUP_URL}
+                    </code>
+                  </div>
+                  <button
+                    onClick={() =>
+                      handleCopyToClipboard(DEFAULT_GROUP_URL, "url")
+                    }
+                    className={`flex items-center gap-1.5 shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                      copiedUrl
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"
+                    }`}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedUrl ? "Tersalin! ✓" : "Salin URL"}
+                  </button>
+                </div>
+
+                {/* Salin Anon Key */}
+                <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-4">
+                  <div className="space-y-1 overflow-hidden">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Default Supabase Anon Key
+                    </span>
+                    <code className="text-xs text-indigo-300 font-mono block truncate">
+                      {DEFAULT_GROUP_ANON_KEY ===
+                      "MASUKKAN_ANON_KEY_ASLI_KELOMPOKMU_DI_SINI"
+                        ? "••••••••••••••••••••••••••••••••••••••••"
+                        : DEFAULT_GROUP_ANON_KEY}
+                    </code>
+                  </div>
+                  <button
+                    onClick={() =>
+                      handleCopyToClipboard(DEFAULT_GROUP_ANON_KEY, "key")
+                    }
+                    className={`flex items-center gap-1.5 shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                      copiedKey
+                        ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                        : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"
+                    }`}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedKey ? "Tersalin! ✓" : "Salin Key"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* BOX 2: FORM SETUP DATABASE INDIVIDUAL */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
               <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                <Settings className="h-5 w-5 text-indigo-400" /> Pengaturan
-                Koneksi Database Supabase Cloud
+                <Settings className="h-5 w-5 text-indigo-400" /> Hubungkan
+                Perangkat ke Supabase Cloud
               </h3>
               <p className="text-xs text-slate-400">
-                Hubungkan dashboard ini ke cloud milikmu secara dinamis tanpa
-                perlu edit manual kodingan di Vercel. Kredensial akan disimpan
-                aman di LocalStorage browser ini.
+                Tempel kredensial database yang sudah kamu salin dari box di
+                atas ke kolom di bawah ini untuk menghubungkan aplikasi browser
+                ini secara dinamis.
               </p>
 
               <form onSubmit={handleSaveConfig} className="space-y-4">
