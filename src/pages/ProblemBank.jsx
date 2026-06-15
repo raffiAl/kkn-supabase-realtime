@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BookOpen, Plus, FolderPlus, AlertTriangle, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, FolderPlus, Trash2 } from 'lucide-react';
 
 export default function ProblemBank({ problems, isAdmin, addProblem, updateProblemStatus, removeProblem }) {
   const [newProblem, setNewProblem] = useState({ title: '', category: 'Ekonomi/UMKM', description: '', severity: 'Sedang', reporter: '' });

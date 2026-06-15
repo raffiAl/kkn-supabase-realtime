@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Users, BookOpen, UserCheck, Layers } from 'lucide-react';
 
 const divisions = {

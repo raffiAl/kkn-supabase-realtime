@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Users, BookOpen, CheckCircle, Clock, Plus, AlertTriangle, UserCheck, ExternalLink, MapPin } from 'lucide-react';
 
 export default function Dashboard({ members, problems, tasks, setCurrentTab }) {

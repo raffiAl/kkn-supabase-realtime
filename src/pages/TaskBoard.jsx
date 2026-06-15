@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckSquare, Plus, Clock, CheckCircle, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Clock, CheckCircle, Trash2 } from 'lucide-react';
 
 export default function TaskBoard({ tasks, members, isAdmin, addTask, updateTaskStatus, removeTask }) {
   const [newTask, setNewTask] = useState({ title: '', assignee: '', deadline: '', status: 'Belum Mulai' });
