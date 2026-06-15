@@ -32,8 +32,6 @@ export default function App() {
     dbStatus,
     errorMessage,
     setErrorMessage,
-    supabaseUrl,
-    supabaseAnonKey,
     addMember,
     removeMember,
     addProblem,
@@ -42,8 +40,6 @@ export default function App() {
     addTask,
     updateTaskStatus,
     removeTask,
-    saveConfig,
-    clearConfig,
   } = useKknData();
 
   return (
@@ -176,10 +172,6 @@ export default function App() {
         {currentTab === "admin" && (
           <AdminPanel
             members={members}
-            supabaseUrl={supabaseUrl}
-            supabaseAnonKey={supabaseAnonKey}
-            saveConfig={saveConfig}
-            clearConfig={clearConfig}
             addMember={addMember}
             removeMember={removeMember}
             isAdmin={isAdmin}

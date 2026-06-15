@@ -278,8 +278,9 @@ export default function Dashboard({ members, problems, tasks, setCurrentTab }) {
               lapangan tidak tersasar.
             </p>
             <a
-              href="#"
+              href="https://maps.app.goo.gl/dABg4jSiHwhtH7L37"
               className="text-xs text-indigo-400 flex items-center gap-1 hover:underline pt-2"
+              target="_blank"
             >
               Buka Gmaps <ExternalLink className="h-3 w-3" />
             </a>

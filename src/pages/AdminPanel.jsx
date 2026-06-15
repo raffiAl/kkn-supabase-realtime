@@ -1,8 +1,5 @@
 import { useState } from "react";
-import { Settings, Lock, Unlock, Copy, Trash2 } from "lucide-react";
-
-const DEFAULT_GROUP_URL = "https://vbziomrdbsmsnqegkqwq.supabase.co";
-const DEFAULT_GROUP_ANON_KEY = "sb_publishable_gaDYw_p-U56_ejevdObJvw_74n6scNF";
+import { Lock, Unlock, Trash2 } from "lucide-react";
 
 const divisions = {
   bph: { name: "Pimpinan Inti (BPH)", max: 3 },
@@ -13,10 +10,6 @@ const divisions = {
 
 export default function AdminPanel({
   members,
-  supabaseUrl: initialUrl,
-  supabaseAnonKey: initialKey,
-  saveConfig,
-  clearConfig,
   addMember,
   removeMember,
   isAdmin,
@@ -24,8 +17,6 @@ export default function AdminPanel({
 }) {
   const [passcode, setPasscode] = useState("");
   const [adminError, setAdminError] = useState("");
-  const [copiedUrl, setCopiedUrl] = useState(false);
-  const [copiedKey, setCopiedKey] = useState(false);
   const [newMember, setNewMember] = useState({
     name: "",
     nim: "",
@@ -33,29 +24,9 @@ export default function AdminPanel({
     role: "",
   });
 
-  const [localUrl, setLocalUrl] = useState(initialUrl);
-  const [localKey, setLocalKey] = useState(initialKey);
-
-  const handleCopyToClipboard = (textToCopy, target) => {
-    navigator.clipboard
-      .writeText(textToCopy)
-      .then(() => {
-        if (target === "url") {
-          setCopiedUrl(true);
-          setTimeout(() => setCopiedUrl(false), 2000);
-        } else {
-          setCopiedKey(true);
-          setTimeout(() => setCopiedKey(false), 2000);
-        }
-      })
-      .catch((err) => {
-        console.error("Gagal menyalin teks ke clipboard: ", err);
-      });
-  };
-
   const handleLogin = (e) => {
     e.preventDefault();
-    if (passcode === "kkn10hebat") {
+    if (passcode === "kkn22hebat") {
       setIsAdmin(true);
       setAdminError("");
     } else {
@@ -104,132 +75,6 @@ export default function AdminPanel({
         </p>
       </div>
 
-      {/* BOX 1: KREDENSIAL AKSES DATABASE BERSAMA */}
-      <div className="bg-gradient-to-br from-indigo-950/50 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🔑</span>
-          <h3 className="font-bold text-white text-md">
-            Kredensial Akses Database Bersama (Tinggal Salin)
-          </h3>
-        </div>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Pajang bagian ini di web agar teman satu tim KKN tinggal menyalin
-          kredensial ini dan menempelkannya ke panel konfigurasi perangkat
-          masing-masing tanpa harus login ulang ke Supabase.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-4">
-            <div className="space-y-1 overflow-hidden">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Default Supabase URL
-              </span>
-              <code className="text-xs text-indigo-300 font-mono block truncate">
-                {DEFAULT_GROUP_URL}
-              </code>
-            </div>
-            <button
-              onClick={() => handleCopyToClipboard(DEFAULT_GROUP_URL, "url")}
-              className={`flex items-center gap-1.5 shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
-                copiedUrl
-                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                  : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"
-              }`}
-            >
-              <Copy className="h-3.5 w-3.5" />
-              {copiedUrl ? "Tersalin! ✓" : "Salin URL"}
-            </button>
-          </div>
-
-          <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-4">
-            <div className="space-y-1 overflow-hidden">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Default Supabase Anon Key
-              </span>
-              <code className="text-xs text-indigo-300 font-mono block truncate">
-                {DEFAULT_GROUP_ANON_KEY}
-              </code>
-            </div>
-            <button
-              onClick={() =>
-                handleCopyToClipboard(DEFAULT_GROUP_ANON_KEY, "key")
-              }
-              className={`flex items-center gap-1.5 shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
-                copiedKey
-                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                  : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"
-              }`}
-            >
-              <Copy className="h-3.5 w-3.5" />
-              {copiedKey ? "Tersalin! ✓" : "Salin Key"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* BOX 2: FORM SETUP DATABASE INDIVIDUAL */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-        <h3 className="font-bold text-white text-lg flex items-center gap-2">
-          <Settings className="h-5 w-5 text-indigo-400" /> Hubungkan Perangkat
-          ke Supabase Cloud
-        </h3>
-        <p className="text-xs text-slate-400">
-          Tempel kredensial database yang sudah kamu salin dari box di atas ke
-          kolom di bawah ini untuk menghubungkan aplikasi browser ini secara
-          dinamis.
-        </p>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveConfig(localUrl, localKey);
-          }}
-          className="space-y-4"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">
-                SUPABASE_URL
-              </label>
-              <input
-                type="text"
-                placeholder="https://yourprojectid.supabase.co"
-                value={localUrl}
-                onChange={(e) => setLocalUrl(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">
-                SUPABASE_ANON_KEY
-              </label>
-              <input
-                type="password"
-                placeholder="your-anon-key-here"
-                value={localKey}
-                onChange={(e) => setLocalKey(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-            >
-              Simpan & Hubungkan Database Cloud
-            </button>
-            <button
-              type="button"
-              onClick={clearConfig}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-            >
-              Reset & Gunakan Mode Simulasi (Local)
-            </button>
-          </div>
-        </form>
-      </div>
-
       {/* SEKSI LOGIN ADMIN */}
       {!isAdmin ? (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 max-w-md mx-auto">
@@ -251,7 +96,7 @@ export default function AdminPanel({
               </label>
               <input
                 type="password"
-                placeholder="Ketik passcode kkn10hebat..."
+                placeholder="Ketik passcode..."
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 text-center font-mono"

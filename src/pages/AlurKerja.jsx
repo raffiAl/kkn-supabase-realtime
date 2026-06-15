@@ -11,7 +11,7 @@ export default function AlurKerja() {
         </p>
       </div>
 
-      <div className="space-y-8 relative before:absolute before:inset-0 before:left-4 md:before:left-1/2 before:w-0.5 before:bg-slate-850">
+      <div className="space-y-8 relative before:absolute before:inset-0 before:left-4 md:before:left-1/2 before:w-0.5 before:bg-white/25 before:opacity-70">
         {/* TAHAP 1: PRE-SURVEI */}
         <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="absolute left-4 md:left-1/2 transform -translate-x-1/2 w-8 h-8 rounded-full bg-indigo-600 border-4 border-slate-950 flex items-center justify-center font-bold text-sm text-white z-10">

@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 // --- ARSITEKTUR SINGLETON SUPABASE CLIENT ---
 let supabaseInstance = null;
 
+const DEFAULT_SUPABASE_URL = "https://vbziomrdbsmsnqegkqwq.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_gaDYw_p-U56_ejevdObJvw_74n6scNF";
+
 const getSupabaseClient = (url, key) => {
   if (!url || !key) {
     supabaseInstance = null;
@@ -24,8 +27,8 @@ const getSupabaseClient = (url, key) => {
 };
 
 export function useKknData() {
-  const [supabaseUrl, setSupabaseUrl] = useState(localStorage.getItem('SUPABASE_URL') || import.meta.env.VITE_SUPABASE_URL || '');
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState(localStorage.getItem('SUPABASE_ANON_KEY') || import.meta.env.VITE_SUPABASE_ANON_KEY || '');
+  const [supabaseUrl, setSupabaseUrl] = useState(localStorage.getItem('SUPABASE_URL') || DEFAULT_SUPABASE_URL);
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState(localStorage.getItem('SUPABASE_ANON_KEY') || DEFAULT_SUPABASE_ANON_KEY);
 
   const [members, setMembers] = useState([
     { id: 1, name: 'Raffi', nim: '20240100101', division: 'bph', role: 'Ketua Kelompok & System Architect' },
@@ -68,6 +71,10 @@ export function useKknData() {
           console.error("Gagal memload data dari Supabase:", err);
           setErrorMessage(`Database Gagal Merespons: ${err.message || 'Periksa status RLS / skema tabel Anda.'}`);
           setDbStatus('Koneksi Supabase Gagal 🔴');
+          localStorage.removeItem('SUPABASE_URL');
+          localStorage.removeItem('SUPABASE_ANON_KEY');
+          setSupabaseUrl('');
+          setSupabaseAnonKey('');
         }
       };
 
@@ -190,29 +197,11 @@ export function useKknData() {
     }
   };
 
-  const saveConfig = (url, key) => {
-    localStorage.setItem('SUPABASE_URL', url);
-    localStorage.setItem('SUPABASE_ANON_KEY', key);
-    setSupabaseUrl(url);
-    setSupabaseAnonKey(key);
-    window.location.reload();
-  };
-
-  const clearConfig = () => {
-    localStorage.removeItem('SUPABASE_URL');
-    localStorage.removeItem('SUPABASE_ANON_KEY');
-    setSupabaseUrl('');
-    setSupabaseAnonKey('');
-    window.location.reload();
-  };
-
   return {
     members, problems, tasks,
     dbStatus, errorMessage, setErrorMessage,
-    supabaseUrl, supabaseAnonKey,
     addMember, removeMember,
     addProblem, updateProblemStatus, removeProblem,
     addTask, updateTaskStatus, removeTask,
-    saveConfig, clearConfig
   };
 }
