@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Users,
   BookOpen,
@@ -45,7 +45,7 @@ const divisions = {
     ],
   },
   litbang: {
-    name: "Divisi Litbang & Data",
+    name: "Divisi Acara",
     max: 3,
     description:
       "Fokus riset masalah struktural desa, merancang instrumen pertanyaan, validasi survei lapangan, dan pemetaan koordinat fisik masalah.",
