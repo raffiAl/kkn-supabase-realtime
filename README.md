@@ -11,6 +11,8 @@ Aplikasi web terintegrasi ini dirancang khusus untuk mendukung operasional penda
 
 Sistem dibangun menggunakan arsitektur SPA (*Single Page Application*) yang mengusung konsep **Offline-First via LocalStorage Fallback**, sehingga anggota tim tetap dapat mengumpulkan data kuesioner dan kerusakan infrastruktur di area pelosok desa yang minim sinyal internet. Saat perangkat terhubung kembali ke jaringan, data secara otomatis tersinkronisasi ke **Supabase Cloud Database (PostgreSQL)**.
 
+check out: https://struktural-kkn-kadununggal.vercel.app/
+
 ---
 
 ## 🚀 Fitur Utama Sistem
